@@ -1,0 +1,1461 @@
+{
+  "dashboard": {
+    "project": {
+      "eyebrow": {
+        "en": "Verifiable clinical decision support PoC",
+        "ja": "検証可能な臨床意思決定支援のPoC"
+      },
+      "font": "humanist",
+      "name": {
+        "en": "Lean-CDS",
+        "ja": "Lean-CDS"
+      },
+      "slug": "lean-cds",
+      "status": {
+        "claim_id": "p-status-functional",
+        "label": {
+          "en": "Functional local PoC",
+          "ja": "機能するローカルPoC"
+        },
+        "tone": "warning"
+      },
+      "summary": {
+        "en": "This local PoC typechecks tracked static scenarios and reports a verdict with its axiom dependencies. Its guarantee is limited to logic inside the encoding; fidelity to clinical guidelines requires separate review.",
+        "ja": "追跡済みの静的シナリオを型検査し、判定と依存公理を示すローカルPoCです。保証は符号化内部の論理に限られ、臨床ガイドラインへの忠実性は別途確認が必要です。"
+      },
+      "tagline": {
+        "en": "Lean 4 checks collisions between encoded indications and contraindications",
+        "ja": "符号化された適応と禁忌の衝突をLean 4で検査"
+      },
+      "theme": "forest"
+    },
+    "schema_version": 1,
+    "tour": {
+      "controls": {
+        "back": {
+          "en": "Back",
+          "ja": "戻る"
+        },
+        "close": {
+          "en": "Close",
+          "ja": "閉じる"
+        },
+        "done": {
+          "en": "Done",
+          "ja": "完了"
+        },
+        "next": {
+          "en": "Next",
+          "ja": "次へ"
+        }
+      },
+      "steps": [
+        {
+          "body": {
+            "en": "When encoded rules lead the same treatment to both Indicated and Contraindicated, the rule set needs a consistency check.",
+            "ja": "複数の符号化規則が同じ治療を適応と禁忌の両方へ導くと、規則集合の整合性を先に確認する必要があります。"
+          },
+          "id": "tour-motivation",
+          "reveal": "",
+          "target": "",
+          "title": {
+            "en": "Why inspect collisions",
+            "ja": "なぜ衝突を見るのか"
+          },
+          "view": ""
+        },
+        {
+          "body": {
+            "en": "The header frames this as a local Lean 4 audit of an encoding, not a replacement for clinical judgment.",
+            "ja": "ヘッダーは、臨床判断の代替ではなく、Lean 4で符号化を監査するローカルPoCとして位置づけます。"
+          },
+          "id": "tour-project",
+          "reveal": "",
+          "target": "project-header",
+          "title": {
+            "en": "Role of this PoC",
+            "ja": "このPoCの役割"
+          },
+          "view": ""
+        },
+        {
+          "body": {
+            "en": "Japanese is the default. Switching language preserves the same claims and evidence granularity.",
+            "ja": "日本語が既定です。切替後も、同じ主張と同じ証拠の粒度を保ちます。"
+          },
+          "id": "tour-language",
+          "reveal": "",
+          "target": "language-switcher",
+          "title": {
+            "en": "Read the same content in JA or EN",
+            "ja": "同じ内容を日英で読む"
+          },
+          "view": ""
+        },
+        {
+          "body": {
+            "en": "Use Overview for boundaries, Example for the transformation, and State for implementation and unresolved work.",
+            "ja": "概要で境界を把握し、具体例で変換を追い、現在地で実装と未解決事項を確認します。"
+          },
+          "id": "tour-navigation",
+          "reveal": "",
+          "target": "view-nav",
+          "title": {
+            "en": "Three reading paths",
+            "ja": "3つの読み方"
+          },
+          "view": ""
+        },
+        {
+          "body": {
+            "en": "The kernel guarantees a contradiction inside the encoding. Source fidelity and rule precedence are separate questions.",
+            "ja": "カーネルが保証するのは符号化内部の矛盾です。原典への忠実性や規則の優先順位は別問題です。"
+          },
+          "id": "tour-boundary",
+          "reveal": "",
+          "target": "overview-boundaries",
+          "title": {
+            "en": "Read the guarantee narrowly",
+            "ja": "保証を狭く正確に読む"
+          },
+          "view": "overview"
+        },
+        {
+          "body": {
+            "en": "Diabetic ketoacidosis and severe hypokalemia both act on the same intravenous insulin treatment.",
+            "ja": "糖尿病性ケトアシドーシスと重症低カリウム血症が、同じインスリン静注へ作用します。"
+          },
+          "id": "tour-example-context",
+          "reveal": "",
+          "target": "example-context",
+          "title": {
+            "en": "Fix the illustrative context",
+            "ja": "説明用ケースを固定する"
+          },
+          "view": "dka-example"
+        },
+        {
+          "body": {
+            "en": "One axiom yields Indicated, another yields Contraindicated, and the consistency axiom excludes their joint state.",
+            "ja": "一方の公理は適応を、もう一方は禁忌を導き、整合性公理は両方の同時成立を否定します。"
+          },
+          "id": "tour-example-rules",
+          "reveal": "",
+          "target": "encoded-rules",
+          "title": {
+            "en": "Compare the two directions",
+            "ja": "2方向の結論を比較する"
+          },
+          "view": "dka-example"
+        },
+        {
+          "body": {
+            "en": "These two lines join Indicated and Contraindicated for the same patient and treatment.",
+            "ja": "この2行が、同一患者・同一治療について適応と禁忌を論理積として束ねます。"
+          },
+          "id": "tour-example-code",
+          "reveal": "",
+          "target": "collision-definition",
+          "title": {
+            "en": "Minimal collision definition",
+            "ja": "衝突の最小定義"
+          },
+          "view": "dka-example"
+        },
+        {
+          "body": {
+            "en": "The button only opens a result pre-authored from the checked-in example.",
+            "ja": "ボタンは、チェックイン済み例から事前作成した結果を開くだけです。"
+          },
+          "id": "tour-demo-ready",
+          "reveal": "",
+          "target": "example-demo",
+          "title": {
+            "en": "This is not a live run",
+            "ja": "ライブ実行ではない"
+          },
+          "view": "dka-example"
+        },
+        {
+          "body": {
+            "en": "See the final theorem targeting False and its dependency audit, without treating that as proof of clinical validity.",
+            "ja": "Falseを目標とする最終定理と依存監査を確認し、臨床妥当性まで証明したとは解釈しません。"
+          },
+          "id": "tour-demo-result",
+          "reveal": "example-demo",
+          "target": "example-demo",
+          "title": {
+            "en": "Read result and limit together",
+            "ja": "結果と限界を一緒に読む"
+          },
+          "view": "dka-example"
+        },
+        {
+          "body": {
+            "en": "Review implemented features, plans, and unresolved source-fidelity assurance by status.",
+            "ja": "実装済み機能、計画、未解決の忠実性保証を状態別に確認します。"
+          },
+          "id": "tour-roadmap",
+          "reveal": "",
+          "target": "tracked-roadmap",
+          "title": {
+            "en": "Separate implemented from next",
+            "ja": "実装と次を分ける"
+          },
+          "view": "project-state"
+        },
+        {
+          "body": {
+            "en": "The tracked regression conditions are explicit; a fresh standard run and CI evidence remain disclosed gaps.",
+            "ja": "追跡済み回帰条件は明確ですが、今回の標準ゲート実行とCI証拠は空白として残しています。"
+          },
+          "id": "tour-evidence",
+          "reveal": "",
+          "target": "verification-evidence",
+          "title": {
+            "en": "Distinguish gate definition from a fresh run",
+            "ja": "ゲート定義と最新実行を区別する"
+          },
+          "view": "project-state"
+        },
+        {
+          "body": {
+            "en": "This PoC checks encoded collisions. The next trust gains are auditable source mapping and a precedence model.",
+            "ja": "このPoCは符号化された衝突を検査します。次の信頼向上は、原典との対応と優先順位モデルを監査可能にすることです。"
+          },
+          "id": "tour-closing",
+          "reveal": "",
+          "target": "project-status",
+          "title": {
+            "en": "Closing: keep the proof target precise",
+            "ja": "結論：証明対象を取り違えない"
+          },
+          "view": ""
+        }
+      ]
+    },
+    "views": [
+      {
+        "components": [
+          {
+            "body": {
+              "en": "These values describe operational and verification units, not codebase size.",
+              "ja": "コード量ではなく、操作と検証の単位を示します。"
+            },
+            "code": {
+              "claim_id": "",
+              "language": "",
+              "text": ""
+            },
+            "demo": {
+              "button": {
+                "en": "",
+                "ja": ""
+              },
+              "result_body": {
+                "en": "",
+                "ja": ""
+              },
+              "result_title": {
+                "en": "",
+                "ja": ""
+              },
+              "running": {
+                "en": "",
+                "ja": ""
+              }
+            },
+            "id": "overview-signal",
+            "items": [
+              {
+                "claim_id": "p-locales",
+                "detail": {
+                  "en": "Japanese is the default, with English also selectable.",
+                  "ja": "日本語が既定で、英語も選択できます。"
+                },
+                "id": "locale-metric",
+                "label": {
+                  "en": "Locales",
+                  "ja": "言語"
+                },
+                "magnitude": 0,
+                "status": "current",
+                "value": {
+                  "en": "2",
+                  "ja": "2"
+                }
+              },
+              {
+                "claim_id": "p-six-scenarios",
+                "detail": {
+                  "en": "The tracked status record covers three cases in Japanese and English.",
+                  "ja": "追跡済み状態記録では、3種類を日本語と英語で保持します。"
+                },
+                "id": "scenario-metric",
+                "label": {
+                  "en": "Encoded scenarios",
+                  "ja": "符号化シナリオ"
+                },
+                "magnitude": 0,
+                "status": "current",
+                "value": {
+                  "en": "6",
+                  "ja": "6"
+                }
+              },
+              {
+                "claim_id": "p-verdicts",
+                "detail": {
+                  "en": "Collision verified, proof unsound, or compiler error.",
+                  "ja": "衝突検証済み、証明不健全、コンパイラエラーです。"
+                },
+                "id": "verdict-metric",
+                "label": {
+                  "en": "Verdict classes",
+                  "ja": "判定クラス"
+                },
+                "magnitude": 0,
+                "status": "current",
+                "value": {
+                  "en": "3",
+                  "ja": "3"
+                }
+              }
+            ],
+            "kind": "metrics",
+            "title": {
+              "en": "Current footprint",
+              "ja": "現在の輪郭"
+            },
+            "tone": "info"
+          },
+          {
+            "body": {
+              "en": "A selection changes which registered file is checked.",
+              "ja": "選択によって変わるのは、どの登録済みファイルを検査するかです。"
+            },
+            "code": {
+              "claim_id": "",
+              "language": "",
+              "text": ""
+            },
+            "demo": {
+              "button": {
+                "en": "",
+                "ja": ""
+              },
+              "result_body": {
+                "en": "",
+                "ja": ""
+              },
+              "result_title": {
+                "en": "",
+                "ja": ""
+              },
+              "running": {
+                "en": "",
+                "ja": ""
+              }
+            },
+            "id": "verification-flow",
+            "items": [
+              {
+                "claim_id": "p-flow-registry",
+                "detail": {
+                  "en": "Resolve it in the locale registry and reject unknown IDs.",
+                  "ja": "ロケール別レジストリで解決し、未知のIDは拒否します。"
+                },
+                "id": "flow-input",
+                "label": {
+                  "en": "1 Input",
+                  "ja": "1 入力"
+                },
+                "magnitude": 0,
+                "status": "current",
+                "value": {
+                  "en": "Registered ID",
+                  "ja": "登録済みID"
+                }
+              },
+              {
+                "claim_id": "p-flow-lean",
+                "detail": {
+                  "en": "The host passes the registered filename to Lean in the locale working directory.",
+                  "ja": "ホストは登録済みファイル名をロケールの作業ディレクトリでLeanに渡します。"
+                },
+                "id": "flow-method",
+                "label": {
+                  "en": "2 Execute",
+                  "ja": "2 実行"
+                },
+                "magnitude": 0,
+                "status": "current",
+                "value": {
+                  "en": "Static Lean file",
+                  "ja": "静的Leanファイル"
+                }
+              },
+              {
+                "claim_id": "p-flow-classification",
+                "detail": {
+                  "en": "Nonzero exit, a missing axiom list, sorryAx, and error text determine one of three verdicts.",
+                  "ja": "非ゼロ終了、空の公理列、sorryAx、エラー文字列を検査して3判定へ分けます。"
+                },
+                "id": "flow-decision",
+                "label": {
+                  "en": "3 Decide",
+                  "ja": "3 判定"
+                },
+                "magnitude": 0,
+                "status": "current",
+                "value": {
+                  "en": "Classify compiler output",
+                  "ja": "コンパイラ出力を分類"
+                }
+              }
+            ],
+            "kind": "steps",
+            "title": {
+              "en": "From input to verdict",
+              "ja": "入力から判定まで"
+            },
+            "tone": "accent"
+          },
+          {
+            "body": {
+              "en": "The dashboard separates the strong guarantee from what remains unverified.",
+              "ja": "強い保証と未検証部分を同じ画面で分離します。"
+            },
+            "code": {
+              "claim_id": "",
+              "language": "",
+              "text": ""
+            },
+            "demo": {
+              "button": {
+                "en": "",
+                "ja": ""
+              },
+              "result_body": {
+                "en": "",
+                "ja": ""
+              },
+              "result_title": {
+                "en": "",
+                "ja": ""
+              },
+              "running": {
+                "en": "",
+                "ja": ""
+              }
+            },
+            "id": "overview-boundaries",
+            "items": [
+              {
+                "claim_id": "p-static-input",
+                "detail": {
+                  "en": "User input is not interpolated into Lean source.",
+                  "ja": "ユーザー入力はLeanソースへ補間されません。"
+                },
+                "id": "static-input-boundary",
+                "label": {
+                  "en": "Lean input",
+                  "ja": "Lean入力"
+                },
+                "magnitude": 0,
+                "status": "current",
+                "value": {
+                  "en": "Static and allowlisted",
+                  "ja": "静的・許可リスト式"
+                }
+              },
+              {
+                "claim_id": "p-fidelity-boundary",
+                "detail": {
+                  "en": "It does not prove that the source guidelines were transcribed faithfully.",
+                  "ja": "原典ガイドラインを忠実に転記したことまでは証明しません。"
+                },
+                "id": "fidelity-boundary",
+                "label": {
+                  "en": "Guarantee scope",
+                  "ja": "保証範囲"
+                },
+                "magnitude": 0,
+                "status": "current",
+                "value": {
+                  "en": "Contradiction inside the encoding",
+                  "ja": "符号化内部の矛盾"
+                }
+              },
+              {
+                "claim_id": "p-monotonic-limit",
+                "detail": {
+                  "en": "It can express mutual exclusion, but not which rule should override another.",
+                  "ja": "相互排他は表せますが、どちらを優先するかは表せません。"
+                },
+                "id": "reasoning-boundary",
+                "label": {
+                  "en": "Reasoning model",
+                  "ja": "推論モデル"
+                },
+                "magnitude": 0,
+                "status": "current",
+                "value": {
+                  "en": "Monotonic; no precedence",
+                  "ja": "単調・優先順位なし"
+                }
+              }
+            ],
+            "kind": "evidence",
+            "title": {
+              "en": "Trust boundary",
+              "ja": "信頼境界"
+            },
+            "tone": "warning"
+          }
+        ],
+        "id": "overview",
+        "kind": "overview",
+        "label": {
+          "en": "Overview",
+          "ja": "概要"
+        },
+        "summary": {
+          "en": "Start with the path from a static encoding to a verdict, then its formal trust boundary.",
+          "ja": "静的な符号化から判定までの流れと、形式証明の信頼境界を先に示します。"
+        },
+        "title": {
+          "en": "What it checks - and what it does not",
+          "ja": "何を検証し、何を検証しないか"
+        }
+      },
+      {
+        "components": [
+          {
+            "body": {
+              "en": "For this dashboard, tracked Scenario B is summarized without patient identifiers or patient-level measurements.",
+              "ja": "このダッシュボード用に、追跡済みシナリオBから患者識別子と個別数値を除いて要約しています。"
+            },
+            "code": {
+              "claim_id": "",
+              "language": "",
+              "text": ""
+            },
+            "demo": {
+              "button": {
+                "en": "",
+                "ja": ""
+              },
+              "result_body": {
+                "en": "",
+                "ja": ""
+              },
+              "result_title": {
+                "en": "",
+                "ja": ""
+              },
+              "running": {
+                "en": "",
+                "ja": ""
+              }
+            },
+            "id": "example-context",
+            "items": [
+              {
+                "claim_id": "",
+                "detail": {
+                  "en": "Do not treat this as a patient-specific decision or medical advice.",
+                  "ja": "実在患者への判断や医療助言として扱いません。"
+                },
+                "id": "example-framing",
+                "label": {
+                  "en": "Framing",
+                  "ja": "位置づけ"
+                },
+                "magnitude": 0,
+                "status": "neutral",
+                "value": {
+                  "en": "Illustrative",
+                  "ja": "説明用"
+                }
+              },
+              {
+                "claim_id": "p-example-context",
+                "detail": {
+                  "en": "These are the opposing conditions in Scenario B.",
+                  "ja": "シナリオBの対立条件です。"
+                },
+                "id": "example-clinical-context",
+                "label": {
+                  "en": "Encoded context",
+                  "ja": "符号化された文脈"
+                },
+                "magnitude": 0,
+                "status": "current",
+                "value": {
+                  "en": "Diabetic ketoacidosis + severe hypokalemia",
+                  "ja": "糖尿病性ケトアシドーシス＋重症低カリウム血症"
+                }
+              },
+              {
+                "claim_id": "p-example-treatment",
+                "detail": {
+                  "en": "The scenario subtitle records it as both indicated and contraindicated.",
+                  "ja": "シナリオの副題は、これを適応かつ禁忌と記録します。"
+                },
+                "id": "example-treatment",
+                "label": {
+                  "en": "Same treatment",
+                  "ja": "同じ治療"
+                },
+                "magnitude": 0,
+                "status": "current",
+                "value": {
+                  "en": "Intravenous insulin",
+                  "ja": "インスリン静注"
+                }
+              }
+            ],
+            "kind": "facts",
+            "title": {
+              "en": "Context and subject",
+              "ja": "文脈と対象"
+            },
+            "tone": "info"
+          },
+          {
+            "body": {
+              "en": "The arrows describe only the checked-in formalization.",
+              "ja": "矢印は、チェックイン済み形式化の関係だけを表します。"
+            },
+            "code": {
+              "claim_id": "",
+              "language": "",
+              "text": ""
+            },
+            "demo": {
+              "button": {
+                "en": "",
+                "ja": ""
+              },
+              "result_body": {
+                "en": "",
+                "ja": ""
+              },
+              "result_title": {
+                "en": "",
+                "ja": ""
+              },
+              "running": {
+                "en": "",
+                "ja": ""
+              }
+            },
+            "id": "encoded-rules",
+            "items": [
+              {
+                "claim_id": "p-example-indication",
+                "detail": {
+                  "en": "Diabetic ketoacidosis → intravenous regular insulin.",
+                  "ja": "糖尿病性ケトアシドーシス → 速効型インスリン静注。"
+                },
+                "id": "encoded-indication",
+                "label": {
+                  "en": "Rule A",
+                  "ja": "規則A"
+                },
+                "magnitude": 0,
+                "status": "current",
+                "value": {
+                  "en": "Indicated",
+                  "ja": "適応"
+                }
+              },
+              {
+                "claim_id": "p-example-contraindication",
+                "detail": {
+                  "en": "Severe hypokalemia → intravenous regular insulin.",
+                  "ja": "重症低カリウム血症 → 速効型インスリン静注。"
+                },
+                "id": "encoded-contraindication",
+                "label": {
+                  "en": "Rule B",
+                  "ja": "規則B"
+                },
+                "magnitude": 0,
+                "status": "current",
+                "value": {
+                  "en": "Contraindicated",
+                  "ja": "禁忌"
+                }
+              },
+              {
+                "claim_id": "p-incompatible",
+                "detail": {
+                  "en": "It excludes Indicated and Contraindicated holding for the same patient and treatment.",
+                  "ja": "同一患者・同一治療について、適応かつ禁忌を否定します。"
+                },
+                "id": "encoded-consistency",
+                "label": {
+                  "en": "Consistency axiom",
+                  "ja": "整合性公理"
+                },
+                "magnitude": 0,
+                "status": "current",
+                "value": {
+                  "en": "Joint state excluded",
+                  "ja": "同時成立を否定"
+                }
+              }
+            ],
+            "kind": "comparison",
+            "title": {
+              "en": "Two rules and a consistency axiom",
+              "ja": "2つの規則と整合性公理"
+            },
+            "tone": "accent"
+          },
+          {
+            "body": {
+              "en": "These two lines are copied exactly from the English shared knowledge module.",
+              "ja": "英語版の共有知識モジュールから、そのまま抜粋した2行です。"
+            },
+            "code": {
+              "claim_id": "p-code-collision",
+              "language": "lean",
+              "text": "def Collision (p : Patient) (t : Treatment) : Prop :=\n  Indicated p t ∧ Contraindicated p t"
+            },
+            "demo": {
+              "button": {
+                "en": "",
+                "ja": ""
+              },
+              "result_body": {
+                "en": "",
+                "ja": ""
+              },
+              "result_title": {
+                "en": "",
+                "ja": ""
+              },
+              "running": {
+                "en": "",
+                "ja": ""
+              }
+            },
+            "id": "collision-definition",
+            "items": [],
+            "kind": "code",
+            "title": {
+              "en": "Collision definition",
+              "ja": "衝突の定義"
+            },
+            "tone": "accent"
+          },
+          {
+            "body": {
+              "en": "The button does not run live verification; it reveals a result authored from checked-in source.",
+              "ja": "ボタンはライブ検証を行わず、チェックイン済みソースから作成した結論を展開します。"
+            },
+            "code": {
+              "claim_id": "",
+              "language": "",
+              "text": ""
+            },
+            "demo": {
+              "button": {
+                "en": "Reveal result",
+                "ja": "結果を表示"
+              },
+              "result_body": {
+                "en": "Scenario B assembles the indication and contraindication into a collision, gives the final theorem a target of False, and requests its axiom dependencies. This is a pre-authored demonstration of logic inside the encoding. It is not evidence of a live run and does not establish clinical validity or fidelity to source guidelines.",
+                "ja": "シナリオBは適応と禁忌を衝突として組み立て、最終定理の目標をFalseとし、依存公理の列挙を要求します。これは符号化内部の論理を示す事前作成結果です。ライブ実行の証拠ではなく、臨床妥当性や原典への忠実性も証明しません。"
+              },
+              "result_title": {
+                "en": "Pre-authored result: collision in the encoding",
+                "ja": "事前作成結果：符号化内の衝突"
+              },
+              "running": {
+                "en": "Revealing result",
+                "ja": "結果を展開中"
+              }
+            },
+            "id": "example-demo",
+            "items": [
+              {
+                "claim_id": "p-demo-assembled",
+                "detail": {
+                  "en": "Scenario B combines its earlier indication and contraindication proofs into a collision.",
+                  "ja": "シナリオBは、先に得た適応と禁忌の証明を衝突へ結合します。"
+                },
+                "id": "demo-construction",
+                "label": {
+                  "en": "Construction",
+                  "ja": "組み立て"
+                },
+                "magnitude": 0,
+                "status": "current",
+                "value": {
+                  "en": "Collision assembled",
+                  "ja": "衝突を構成"
+                }
+              },
+              {
+                "claim_id": "p-demo-false",
+                "detail": {
+                  "en": "The final theorem has False as its proposition.",
+                  "ja": "最終定理の命題はFalseです。"
+                },
+                "id": "demo-target",
+                "label": {
+                  "en": "Final target",
+                  "ja": "最終目標"
+                },
+                "magnitude": 0,
+                "status": "current",
+                "value": {
+                  "en": "False",
+                  "ja": "False"
+                }
+              },
+              {
+                "claim_id": "p-demo-axioms",
+                "detail": {
+                  "en": "The final line requests the axioms on which the final theorem depends.",
+                  "ja": "最終行は、最終定理が依存する公理の表示を要求します。"
+                },
+                "id": "demo-dependencies",
+                "label": {
+                  "en": "Dependency audit",
+                  "ja": "依存監査"
+                },
+                "magnitude": 0,
+                "status": "current",
+                "value": {
+                  "en": "List used axioms",
+                  "ja": "使用公理を列挙"
+                }
+              }
+            ],
+            "kind": "demo",
+            "title": {
+              "en": "Pre-authored verification result",
+              "ja": "事前作成された検証結果"
+            },
+            "tone": "warning"
+          }
+        ],
+        "id": "dka-example",
+        "kind": "example",
+        "label": {
+          "en": "Example",
+          "ja": "具体例"
+        },
+        "summary": {
+          "en": "A privacy-safe illustrative case shows two encoded rules converging on the same treatment.",
+          "ja": "個人識別子や患者別数値を含まない説明用ケースで、同じ治療へ2つの符号化規則が収束する過程を追います。"
+        },
+        "title": {
+          "en": "Example: diabetic ketoacidosis and severe hypokalemia",
+          "ja": "例：糖尿病性ケトアシドーシスと重症低カリウム血症"
+        }
+      },
+      {
+        "components": [
+          {
+            "body": {
+              "en": "Statuses follow the ledger, including the absence of an explicit in-progress marker.",
+              "ja": "状態は台帳の記述に合わせ、進行中が明示されていない点も残します。"
+            },
+            "code": {
+              "claim_id": "",
+              "language": "",
+              "text": ""
+            },
+            "demo": {
+              "button": {
+                "en": "",
+                "ja": ""
+              },
+              "result_body": {
+                "en": "",
+                "ja": ""
+              },
+              "result_title": {
+                "en": "",
+                "ja": ""
+              },
+              "running": {
+                "en": "",
+                "ja": ""
+              }
+            },
+            "id": "tracked-roadmap",
+            "items": [
+              {
+                "claim_id": "p-implemented-ui",
+                "detail": {
+                  "en": "The roadmap records these three features as in place.",
+                  "ja": "ロードマップは3機能を導入済みと記録しています。"
+                },
+                "id": "implemented-ui",
+                "label": {
+                  "en": "Implemented",
+                  "ja": "実装済み"
+                },
+                "magnitude": 0,
+                "status": "done",
+                "value": {
+                  "en": "JA/EN UI, syntax highlighting, olean auto-heal",
+                  "ja": "日英UI・構文強調・olean自動修復"
+                }
+              },
+              {
+                "claim_id": "p-active-unmarked",
+                "detail": {
+                  "en": "Interpretation: Forward and Backlog exist, but no item is marked as in progress.",
+                  "ja": "解釈：ForwardとBacklogはありますが、作業中状態は付されていません。"
+                },
+                "id": "active-unmarked",
+                "label": {
+                  "en": "In progress",
+                  "ja": "進行中"
+                },
+                "magnitude": 0,
+                "status": "gap",
+                "value": {
+                  "en": "Not identified",
+                  "ja": "明示なし"
+                }
+              },
+              {
+                "claim_id": "p-scenario-d",
+                "detail": {
+                  "en": "This is the first forward item.",
+                  "ja": "前方項目の1番目です。"
+                },
+                "id": "scenario-d",
+                "label": {
+                  "en": "Next",
+                  "ja": "次"
+                },
+                "magnitude": 0,
+                "status": "planned",
+                "value": {
+                  "en": "Add Scenario D in JA and EN",
+                  "ja": "シナリオDを日英で追加"
+                }
+              },
+              {
+                "claim_id": "p-precedence-planned",
+                "detail": {
+                  "en": "The plan is to represent rule priority, beyond mutual exclusion.",
+                  "ja": "相互排他だけでなく、規則の優先を表す計画です。"
+                },
+                "id": "precedence-work",
+                "label": {
+                  "en": "Next",
+                  "ja": "次"
+                },
+                "magnitude": 0,
+                "status": "planned",
+                "value": {
+                  "en": "Precedence and defeasibility",
+                  "ja": "優先順位・反証可能性"
+                }
+              },
+              {
+                "claim_id": "p-fidelity-roadmap",
+                "detail": {
+                  "en": "No metatheorem or auditable process yet ties axioms to cited sections.",
+                  "ja": "公理と引用元節を結ぶメタ定理または監査可能な工程は未整備です。"
+                },
+                "id": "fidelity-work",
+                "label": {
+                  "en": "Unresolved",
+                  "ja": "未解決"
+                },
+                "magnitude": 0,
+                "status": "blocked",
+                "value": {
+                  "en": "Source-fidelity assurance",
+                  "ja": "原典への忠実性保証"
+                }
+              },
+              {
+                "claim_id": "p-toolchain-pin",
+                "detail": {
+                  "en": "This is planned for reproducible builds.",
+                  "ja": "再現可能なビルドのための計画です。"
+                },
+                "id": "toolchain-pin",
+                "label": {
+                  "en": "Backlog",
+                  "ja": "バックログ"
+                },
+                "magnitude": 0,
+                "status": "planned",
+                "value": {
+                  "en": "Pin the Lean toolchain",
+                  "ja": "Leanツールチェーンを固定"
+                }
+              }
+            ],
+            "kind": "roadmap",
+            "title": {
+              "en": "Tracked roadmap",
+              "ja": "追跡済みロードマップ"
+            },
+            "tone": "warning"
+          },
+          {
+            "body": {
+              "en": "This separates the tracked gate definition from whether that standard gate was freshly run.",
+              "ja": "追跡済みゲートの定義と、今回の標準実行の有無を区別します。"
+            },
+            "code": {
+              "claim_id": "",
+              "language": "",
+              "text": ""
+            },
+            "demo": {
+              "button": {
+                "en": "",
+                "ja": ""
+              },
+              "result_body": {
+                "en": "",
+                "ja": ""
+              },
+              "result_title": {
+                "en": "",
+                "ja": ""
+              },
+              "running": {
+                "en": "",
+                "ja": ""
+              }
+            },
+            "id": "verification-evidence",
+            "items": [
+              {
+                "claim_id": "p-regression-contract",
+                "detail": {
+                  "en": "Each registered case must be CollisionVerified, match the expected axiom set exactly, and exit with code 0.",
+                  "ja": "各登録例でCollisionVerified、期待公理集合の完全一致、終了コード0を要求します。"
+                },
+                "id": "regression-contract",
+                "label": {
+                  "en": "Tracked gate",
+                  "ja": "追跡済みゲート"
+                },
+                "magnitude": 0,
+                "status": "current",
+                "value": {
+                  "en": "Three exact checks",
+                  "ja": "3条件を厳密照合"
+                }
+              },
+              {
+                "claim_id": "p-standard-run",
+                "detail": {
+                  "en": "A project-local environment with the app dependencies was unavailable, so the standard Python gate was not run.",
+                  "ja": "アプリ依存関係を備えたプロジェクトローカル環境がなく、標準Pythonゲートは実行していません。"
+                },
+                "id": "standard-run-gap",
+                "label": {
+                  "en": "Fresh standard gate",
+                  "ja": "今回の標準ゲート"
+                },
+                "magnitude": 0,
+                "status": "gap",
+                "value": {
+                  "en": "Not run",
+                  "ja": "未実行"
+                }
+              },
+              {
+                "claim_id": "p-ci",
+                "detail": {
+                  "en": "No CI configuration was found among tracked files.",
+                  "ja": "追跡済みファイルからCI設定を確認できませんでした。"
+                },
+                "id": "ci-gap",
+                "label": {
+                  "en": "CI",
+                  "ja": "CI"
+                },
+                "magnitude": 0,
+                "status": "gap",
+                "value": {
+                  "en": "No evidence found",
+                  "ja": "証拠なし"
+                }
+              }
+            ],
+            "kind": "evidence",
+            "title": {
+              "en": "Verification evidence and audit gaps",
+              "ja": "検証証拠と監査上の空白"
+            },
+            "tone": "warning"
+          }
+        ],
+        "id": "project-state",
+        "kind": "state",
+        "label": {
+          "en": "State",
+          "ja": "現在地"
+        },
+        "summary": {
+          "en": "The tracked ledger separates implemented features, forward work, and trust gaps.",
+          "ja": "追跡済み台帳にある実装済み機能、前方項目、信頼ギャップを分けます。"
+        },
+        "title": {
+          "en": "Implemented, next, and unresolved",
+          "ja": "実装済み、次、未解決"
+        }
+      }
+    ]
+  },
+  "gaps": [
+    {
+      "action": {
+        "en": "Run the tracked regression harness once in an environment with project-local dependencies, then retain the exit code and all six verdicts.",
+        "ja": "プロジェクトローカル依存関係を準備した環境で追跡済み回帰ハーネスを1回実行し、終了コードと6件の判定を保存してください。"
+      },
+      "checked": {
+        "en": "Using the available Lean compiler, the shared knowledge and each scenario were combined in memory and all six pairs were typechecked read-only. Python app dependencies were absent from the current environment.",
+        "ja": "利用可能なLeanで、共有知識と各シナリオをメモリ上で結合した6組を読み取り専用で型検査しました。Pythonアプリ依存関係は現在の実行環境にありませんでした。"
+      },
+      "topic": {
+        "en": "Fresh standard regression run",
+        "ja": "標準回帰ゲートの最新実行"
+      }
+    },
+    {
+      "action": {
+        "en": "Identify the CI location if managed elsewhere; otherwise add a minimal job that runs the regression gate.",
+        "ja": "CIが別管理なら設定場所を示してください。なければ、回帰ゲートを実行する最小ジョブを追加してください。"
+      },
+      "checked": {
+        "en": "The tracked file list, manifest, and regression script were checked, but no CI configuration was found.",
+        "ja": "追跡済みファイル一覧、マニフェスト、回帰スクリプトを確認しましたが、CI設定は見つかりませんでした。"
+      },
+      "topic": {
+        "en": "Continuous verification in CI",
+        "ja": "CIによる継続検証"
+      }
+    },
+    {
+      "action": {
+        "en": "Have a guideline expert compare every axiom with its source section and approve the JA/EN indications, contraindications, and thresholds.",
+        "ja": "対象ガイドラインの専門家が各公理を原典節と照合し、日英の適応条件、禁忌条件、閾値を承認してください。"
+      },
+      "checked": {
+        "en": "The Lean axioms, JA/EN scenario prose, and tracked roadmap were checked. The roadmap itself records fidelity as the core trust gap.",
+        "ja": "Lean公理、日英シナリオ文、追跡済みロードマップを確認しました。ロードマップ自身が忠実性を中核の信頼ギャップと記録しています。"
+      },
+      "topic": {
+        "en": "Clinical source fidelity and JA/EN equivalence",
+        "ja": "臨床原典への忠実性と日英同等性"
+      }
+    },
+    {
+      "action": {
+        "en": "Mark exactly one item as in progress, or state that none is active.",
+        "ja": "1項目だけを進行中として指定するか、現在はなしと明記してください。"
+      },
+      "checked": {
+        "en": "The roadmap has Forward and Backlog sections but no owner or in-progress marker.",
+        "ja": "ロードマップにはForwardとBacklogがありますが、所有者や進行中マーカーはありません。"
+      },
+      "topic": {
+        "en": "Current in-progress item",
+        "ja": "現在進行中の項目"
+      }
+    }
+  ],
+  "provenance": [
+    {
+      "claim": {
+        "en": "The project is recorded as a functional PoC.",
+        "ja": "プロジェクトは機能するPoCとして記録されています。"
+      },
+      "id": "p-status-functional",
+      "quote": "PoC functional",
+      "src": ".agent/roadmap.md:L3-L4",
+      "status": "verified"
+    },
+    {
+      "claim": {
+        "en": "The default locale is Japanese, and the two supported locales are Japanese and English.",
+        "ja": "既定ロケールは日本語で、対応ロケールは日本語と英語の2つです。"
+      },
+      "id": "p-locales",
+      "quote": "DEFAULT_LOCALE: Final[str] = \"ja\"\nSUPPORTED_LOCALES: Final[tuple[str, ...]] = (\"ja\", \"en\")",
+      "src": "i18n.py:L7-L8",
+      "status": "verified"
+    },
+    {
+      "claim": {
+        "en": "The tracked status record reports six scenarios, representing three collision cases across JA and EN, as CollisionVerified.",
+        "ja": "追跡済み状態記録は、3種類の衝突を日英で表す6シナリオをCollisionVerifiedとしています。"
+      },
+      "id": "p-six-scenarios",
+      "quote": "all six scenarios CollisionVerified (three guideline collisions × JA/EN)",
+      "src": ".agent/roadmap.md:L3-L4",
+      "status": "verified"
+    },
+    {
+      "claim": {
+        "en": "The host verdict enum has three values: CollisionVerified, ProofUnsound, and CompilerError.",
+        "ja": "ホストの判定列挙にはCollisionVerified、ProofUnsound、CompilerErrorの3値があります。"
+      },
+      "id": "p-verdicts",
+      "quote": "    CollisionVerified = \"CollisionVerified\"\n    ProofUnsound = \"ProofUnsound\"\n    CompilerError = \"CompilerError\"",
+      "src": "app.py:L178-L183",
+      "status": "verified"
+    },
+    {
+      "claim": {
+        "en": "A scenario ID is resolved in the locale registry, and an unknown ID is rejected.",
+        "ja": "シナリオIDはロケール別レジストリで解決され、未知のIDは拒否されます。"
+      },
+      "id": "p-flow-registry",
+      "quote": "scenario = scenarios.get(scenario_id)",
+      "src": "app.py:L301-L306",
+      "status": "verified"
+    },
+    {
+      "claim": {
+        "en": "The host passes the registered scenario filename to Lean in the locale working directory.",
+        "ja": "ホストは登録済みシナリオのファイル名をロケールの作業ディレクトリでLeanへ渡します。"
+      },
+      "id": "p-flow-lean",
+      "quote": "[LEAN_BINARY, scenario.lean_filename]",
+      "src": "app.py:L247-L254",
+      "status": "verified"
+    },
+    {
+      "claim": {
+        "en": "The classifier inspects the exit code, axiom list, sorryAx, and error text before returning one of three verdicts.",
+        "ja": "分類器は終了コード、公理列、sorryAx、エラー文字列を検査し、最終的に3判定の1つを返します。"
+      },
+      "id": "p-flow-classification",
+      "quote": "return Verdict.CollisionVerified",
+      "src": "app.py:L212-L225",
+      "status": "verified"
+    },
+    {
+      "claim": {
+        "en": "User input is not interpolated into Lean source; the host invokes a resolved static file.",
+        "ja": "ユーザー入力はLeanソースへ補間されず、ホストは解決済みの静的ファイルを呼び出します。"
+      },
+      "id": "p-static-input",
+      "quote": "No user input is ever interpolated into Lean source",
+      "src": "scenarios.py:L1-L1",
+      "status": "verified"
+    },
+    {
+      "claim": {
+        "en": "Lean proves a contradiction in the encoding, not that the axioms faithfully transcribe the published guideline.",
+        "ja": "Leanが証明するのは符号化の矛盾であり、公理が公開ガイドラインを忠実に転記したことではありません。"
+      },
+      "id": "p-fidelity-boundary",
+      "quote": "Lean proves the ENCODING is contradictory, not that the axioms faithfully transcribe the published guideline.",
+      "src": ".agent/memory.md:L19-L22",
+      "status": "verified"
+    },
+    {
+      "claim": {
+        "en": "The current algebra is monotonic and has neither defeasibility nor precedence.",
+        "ja": "現在の代数は単調で、反証可能性も優先順位もありません。"
+      },
+      "id": "p-monotonic-limit",
+      "quote": "The algebra is monotonic — no defeasibility or precedence.",
+      "src": ".agent/memory.md:L20-L22",
+      "status": "verified"
+    },
+    {
+      "claim": {
+        "en": "The title of English Scenario B is diabetic ketoacidosis versus severe hypokalemia.",
+        "ja": "英語版シナリオBの題名は、糖尿病性ケトアシドーシスと重症低カリウム血症の対立です。"
+      },
+      "id": "p-example-context",
+      "quote": "Diabetic Ketoacidosis vs. Severe Hypokalemia",
+      "src": "scenarios.py:L136-L139",
+      "status": "verified"
+    },
+    {
+      "claim": {
+        "en": "The English Scenario B subtitle labels intravenous insulin as both indicated and contraindicated.",
+        "ja": "英語版シナリオBの副題は、経静脈インスリンを適応かつ禁忌としています。"
+      },
+      "id": "p-example-treatment",
+      "quote": "Intravenous insulin: indicated and contraindicated",
+      "src": "scenarios.py:L136-L139",
+      "status": "verified"
+    },
+    {
+      "claim": {
+        "en": "The English shared knowledge has an axiom deriving intravenous regular insulin as Indicated from diabetic ketoacidosis.",
+        "ja": "英語版共有知識では、糖尿病性ケトアシドーシスから速効型インスリン静注の適応を導く公理があります。"
+      },
+      "id": "p-example-indication",
+      "quote": "HasDiabeticKetoacidosis p → Indicated p Treatment.ivRegularInsulin",
+      "src": "lean/en/MedicalKnowledge.lean:L38-L40",
+      "status": "verified"
+    },
+    {
+      "claim": {
+        "en": "The English shared knowledge has an axiom deriving intravenous regular insulin as Contraindicated from severe hypokalemia.",
+        "ja": "英語版共有知識では、重症低カリウム血症から速効型インスリン静注の禁忌を導く公理があります。"
+      },
+      "id": "p-example-contraindication",
+      "quote": "HasSevereHypokalemia p → Contraindicated p Treatment.ivRegularInsulin",
+      "src": "lean/en/MedicalKnowledge.lean:L42-L44",
+      "status": "verified"
+    },
+    {
+      "claim": {
+        "en": "The incompatibility axiom denies Indicated and Contraindicated holding jointly for the same patient and treatment.",
+        "ja": "両立不能性公理は、同一患者・同一治療について適応と禁忌が同時に成り立つことを否定します。"
+      },
+      "id": "p-incompatible",
+      "quote": "¬ (Indicated p t ∧ Contraindicated p t)",
+      "src": "lean/en/MedicalKnowledge.lean:L27-L28",
+      "status": "verified"
+    },
+    {
+      "claim": {
+        "en": "Collision is defined as Indicated and Contraindicated both holding for the same patient and treatment.",
+        "ja": "衝突は、同一患者・同一治療について適応と禁忌がともに成り立つ命題として定義されます。"
+      },
+      "id": "p-code-collision",
+      "quote": "def Collision (p : Patient) (t : Treatment) : Prop :=\n  Indicated p t ∧ Contraindicated p t",
+      "src": "lean/en/MedicalKnowledge.lean:L24-L25",
+      "status": "verified"
+    },
+    {
+      "claim": {
+        "en": "Scenario B's collision proof passes the earlier insulin indication and contraindication proofs to And.intro.",
+        "ja": "シナリオBの衝突証明は、先行するインスリン適応証明と禁忌証明をAnd.introへ渡します。"
+      },
+      "id": "p-demo-assembled",
+      "quote": "  · exact insulin_indicated\n  · exact insulin_contraindicated",
+      "src": "lean/en/ScenarioB.lean:L19-L24",
+      "status": "verified"
+    },
+    {
+      "claim": {
+        "en": "Scenario B's final theorem has False as its proposition.",
+        "ja": "シナリオBの最終定理はFalseを命題とします。"
+      },
+      "id": "p-demo-false",
+      "quote": "theorem absurd : False := by",
+      "src": "lean/en/ScenarioB.lean:L26-L28",
+      "status": "verified"
+    },
+    {
+      "claim": {
+        "en": "Scenario B's final line asks Lean to print the axioms used by the final theorem.",
+        "ja": "シナリオBの最終行は、最終定理の依存公理を表示するようLeanへ要求します。"
+      },
+      "id": "p-demo-axioms",
+      "quote": "print axioms absurd",
+      "src": "lean/en/ScenarioB.lean:L30-L30",
+      "status": "verified"
+    },
+    {
+      "claim": {
+        "en": "The tracked roadmap records the JA/EN UI, Pygments highlighting, and olean toolchain auto-heal as in place.",
+        "ja": "追跡済みロードマップは、日英UI、Pygments構文強調、oleanツールチェーン自動修復を導入済みと記録しています。"
+      },
+      "id": "p-implemented-ui",
+      "quote": "Bilingual UI, Pygments highlighting, and olean toolchain auto-heal are in place.",
+      "src": ".agent/roadmap.md:L3-L4",
+      "status": "verified"
+    },
+    {
+      "claim": {
+        "en": "Interpretation: the roadmap lists Forward and Backlog items but identifies none as in progress.",
+        "ja": "解釈：ロードマップはForwardとBacklogを列挙しますが、進行中として指定した項目はありません。"
+      },
+      "id": "p-active-unmarked",
+      "quote": "Forward",
+      "src": ".agent/roadmap.md:L9-L15",
+      "status": "inferred"
+    },
+    {
+      "claim": {
+        "en": "Adding Scenario D in JA and EN is the first forward item.",
+        "ja": "日英のシナリオD追加が最初の前方項目です。"
+      },
+      "id": "p-scenario-d",
+      "quote": "ScenarioD (en + ja)",
+      "src": ".agent/roadmap.md:L9-L10",
+      "status": "verified"
+    },
+    {
+      "claim": {
+        "en": "Modeling guideline priority and defeasibility is planned.",
+        "ja": "ガイドラインの優先順位と反証可能性をモデル化する作業が計画されています。"
+      },
+      "id": "p-precedence-planned",
+      "quote": "model guideline priority/defeasibility",
+      "src": ".agent/roadmap.md:L10-L11",
+      "status": "verified"
+    },
+    {
+      "claim": {
+        "en": "Fidelity between axioms and cited sections currently depends on encoder discipline and is the core trust gap.",
+        "ja": "公理と引用元節の忠実性は、現在は符号化者の規律に依存する中核的な信頼ギャップです。"
+      },
+      "id": "p-fidelity-roadmap",
+      "quote": "Faithfulness is encoder-discipline only right now (the core trust gap).",
+      "src": ".agent/roadmap.md:L12-L12",
+      "status": "verified"
+    },
+    {
+      "claim": {
+        "en": "Pinning the Lean toolchain is a backlog item for reproducible builds.",
+        "ja": "Leanツールチェーンの固定は、再現可能なビルドのためのバックログ項目です。"
+      },
+      "id": "p-toolchain-pin",
+      "quote": "Pin the Lean toolchain",
+      "src": ".agent/roadmap.md:L14-L15",
+      "status": "verified"
+    },
+    {
+      "claim": {
+        "en": "The tracked regression harness simultaneously requires CollisionVerified, an exact match to the expected axiom set, and exit code 0.",
+        "ja": "追跡済み回帰ハーネスは、CollisionVerified、期待公理集合との完全一致、終了コード0を同時に要求します。"
+      },
+      "id": "p-regression-contract",
+      "quote": "                result.verdict == Verdict.CollisionVerified\n                and actual_axioms == expected_axioms\n                and result.exit_code == 0",
+      "src": "scripts/check_scenarios.py:L67-L80",
+      "status": "verified"
+    },
+    {
+      "claim": {
+        "en": "The standard Python regression gate was not run during this read-only audit.",
+        "ja": "標準のPython回帰ゲートは、今回の読み取り専用監査では実行されていません。"
+      },
+      "id": "p-standard-run",
+      "quote": "",
+      "src": "",
+      "status": "gap"
+    },
+    {
+      "claim": {
+        "en": "No tracked CI configuration was found.",
+        "ja": "追跡済みCI設定は確認できませんでした。"
+      },
+      "id": "p-ci",
+      "quote": "",
+      "src": "",
+      "status": "gap"
+    }
+  ]
+}

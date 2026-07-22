@@ -1,0 +1,16 @@
+#!/bin/sh
+# Checkout-bound launcher; remains valid when reached through an install symlink.
+set -eu
+
+self=$(readlink -f -- "$0")
+root=$(CDPATH='' cd -- "$(dirname -- "$self")/.." && pwd -P)
+
+exec python3 -I -c '
+import runpy
+import sys
+
+root = sys.argv.pop(1)
+sys.argv[0] = "preview"
+sys.path.insert(0, root + "/src")
+runpy.run_module("preview_tool", run_name="__main__")
+' "$root" "$@"

@@ -1,0 +1,282 @@
+[
+  {
+    "claim": {
+      "en": "The project is recorded as a functional PoC.",
+      "ja": "プロジェクトは機能するPoCとして記録されています。"
+    },
+    "id": "p-status-functional",
+    "quote": "PoC functional",
+    "src": ".agent/roadmap.md:L3-L4",
+    "status": "verified"
+  },
+  {
+    "claim": {
+      "en": "The default locale is Japanese, and the two supported locales are Japanese and English.",
+      "ja": "既定ロケールは日本語で、対応ロケールは日本語と英語の2つです。"
+    },
+    "id": "p-locales",
+    "quote": "DEFAULT_LOCALE: Final[str] = \"ja\"\nSUPPORTED_LOCALES: Final[tuple[str, ...]] = (\"ja\", \"en\")",
+    "src": "i18n.py:L7-L8",
+    "status": "verified"
+  },
+  {
+    "claim": {
+      "en": "The tracked status record reports six scenarios, representing three collision cases across JA and EN, as CollisionVerified.",
+      "ja": "追跡済み状態記録は、3種類の衝突を日英で表す6シナリオをCollisionVerifiedとしています。"
+    },
+    "id": "p-six-scenarios",
+    "quote": "all six scenarios CollisionVerified (three guideline collisions × JA/EN)",
+    "src": ".agent/roadmap.md:L3-L4",
+    "status": "verified"
+  },
+  {
+    "claim": {
+      "en": "The host verdict enum has three values: CollisionVerified, ProofUnsound, and CompilerError.",
+      "ja": "ホストの判定列挙にはCollisionVerified、ProofUnsound、CompilerErrorの3値があります。"
+    },
+    "id": "p-verdicts",
+    "quote": "    CollisionVerified = \"CollisionVerified\"\n    ProofUnsound = \"ProofUnsound\"\n    CompilerError = \"CompilerError\"",
+    "src": "app.py:L178-L183",
+    "status": "verified"
+  },
+  {
+    "claim": {
+      "en": "A scenario ID is resolved in the locale registry, and an unknown ID is rejected.",
+      "ja": "シナリオIDはロケール別レジストリで解決され、未知のIDは拒否されます。"
+    },
+    "id": "p-flow-registry",
+    "quote": "scenario = scenarios.get(scenario_id)",
+    "src": "app.py:L301-L306",
+    "status": "verified"
+  },
+  {
+    "claim": {
+      "en": "The host passes the registered scenario filename to Lean in the locale working directory.",
+      "ja": "ホストは登録済みシナリオのファイル名をロケールの作業ディレクトリでLeanへ渡します。"
+    },
+    "id": "p-flow-lean",
+    "quote": "[LEAN_BINARY, scenario.lean_filename]",
+    "src": "app.py:L247-L254",
+    "status": "verified"
+  },
+  {
+    "claim": {
+      "en": "The classifier inspects the exit code, axiom list, sorryAx, and error text before returning one of three verdicts.",
+      "ja": "分類器は終了コード、公理列、sorryAx、エラー文字列を検査し、最終的に3判定の1つを返します。"
+    },
+    "id": "p-flow-classification",
+    "quote": "return Verdict.CollisionVerified",
+    "src": "app.py:L212-L225",
+    "status": "verified"
+  },
+  {
+    "claim": {
+      "en": "User input is not interpolated into Lean source; the host invokes a resolved static file.",
+      "ja": "ユーザー入力はLeanソースへ補間されず、ホストは解決済みの静的ファイルを呼び出します。"
+    },
+    "id": "p-static-input",
+    "quote": "No user input is ever interpolated into Lean source",
+    "src": "scenarios.py:L1-L1",
+    "status": "verified"
+  },
+  {
+    "claim": {
+      "en": "Lean proves a contradiction in the encoding, not that the axioms faithfully transcribe the published guideline.",
+      "ja": "Leanが証明するのは符号化の矛盾であり、公理が公開ガイドラインを忠実に転記したことではありません。"
+    },
+    "id": "p-fidelity-boundary",
+    "quote": "Lean proves the ENCODING is contradictory, not that the axioms faithfully transcribe the published guideline.",
+    "src": ".agent/memory.md:L19-L22",
+    "status": "verified"
+  },
+  {
+    "claim": {
+      "en": "The current algebra is monotonic and has neither defeasibility nor precedence.",
+      "ja": "現在の代数は単調で、反証可能性も優先順位もありません。"
+    },
+    "id": "p-monotonic-limit",
+    "quote": "The algebra is monotonic — no defeasibility or precedence.",
+    "src": ".agent/memory.md:L20-L22",
+    "status": "verified"
+  },
+  {
+    "claim": {
+      "en": "The title of English Scenario B is diabetic ketoacidosis versus severe hypokalemia.",
+      "ja": "英語版シナリオBの題名は、糖尿病性ケトアシドーシスと重症低カリウム血症の対立です。"
+    },
+    "id": "p-example-context",
+    "quote": "Diabetic Ketoacidosis vs. Severe Hypokalemia",
+    "src": "scenarios.py:L136-L139",
+    "status": "verified"
+  },
+  {
+    "claim": {
+      "en": "The English Scenario B subtitle labels intravenous insulin as both indicated and contraindicated.",
+      "ja": "英語版シナリオBの副題は、経静脈インスリンを適応かつ禁忌としています。"
+    },
+    "id": "p-example-treatment",
+    "quote": "Intravenous insulin: indicated and contraindicated",
+    "src": "scenarios.py:L136-L139",
+    "status": "verified"
+  },
+  {
+    "claim": {
+      "en": "The English shared knowledge has an axiom deriving intravenous regular insulin as Indicated from diabetic ketoacidosis.",
+      "ja": "英語版共有知識では、糖尿病性ケトアシドーシスから速効型インスリン静注の適応を導く公理があります。"
+    },
+    "id": "p-example-indication",
+    "quote": "HasDiabeticKetoacidosis p → Indicated p Treatment.ivRegularInsulin",
+    "src": "lean/en/MedicalKnowledge.lean:L38-L40",
+    "status": "verified"
+  },
+  {
+    "claim": {
+      "en": "The English shared knowledge has an axiom deriving intravenous regular insulin as Contraindicated from severe hypokalemia.",
+      "ja": "英語版共有知識では、重症低カリウム血症から速効型インスリン静注の禁忌を導く公理があります。"
+    },
+    "id": "p-example-contraindication",
+    "quote": "HasSevereHypokalemia p → Contraindicated p Treatment.ivRegularInsulin",
+    "src": "lean/en/MedicalKnowledge.lean:L42-L44",
+    "status": "verified"
+  },
+  {
+    "claim": {
+      "en": "The incompatibility axiom denies Indicated and Contraindicated holding jointly for the same patient and treatment.",
+      "ja": "両立不能性公理は、同一患者・同一治療について適応と禁忌が同時に成り立つことを否定します。"
+    },
+    "id": "p-incompatible",
+    "quote": "¬ (Indicated p t ∧ Contraindicated p t)",
+    "src": "lean/en/MedicalKnowledge.lean:L27-L28",
+    "status": "verified"
+  },
+  {
+    "claim": {
+      "en": "Collision is defined as Indicated and Contraindicated both holding for the same patient and treatment.",
+      "ja": "衝突は、同一患者・同一治療について適応と禁忌がともに成り立つ命題として定義されます。"
+    },
+    "id": "p-code-collision",
+    "quote": "def Collision (p : Patient) (t : Treatment) : Prop :=\n  Indicated p t ∧ Contraindicated p t",
+    "src": "lean/en/MedicalKnowledge.lean:L24-L25",
+    "status": "verified"
+  },
+  {
+    "claim": {
+      "en": "Scenario B's collision proof passes the earlier insulin indication and contraindication proofs to And.intro.",
+      "ja": "シナリオBの衝突証明は、先行するインスリン適応証明と禁忌証明をAnd.introへ渡します。"
+    },
+    "id": "p-demo-assembled",
+    "quote": "  · exact insulin_indicated\n  · exact insulin_contraindicated",
+    "src": "lean/en/ScenarioB.lean:L19-L24",
+    "status": "verified"
+  },
+  {
+    "claim": {
+      "en": "Scenario B's final theorem has False as its proposition.",
+      "ja": "シナリオBの最終定理はFalseを命題とします。"
+    },
+    "id": "p-demo-false",
+    "quote": "theorem absurd : False := by",
+    "src": "lean/en/ScenarioB.lean:L26-L28",
+    "status": "verified"
+  },
+  {
+    "claim": {
+      "en": "Scenario B's final line asks Lean to print the axioms used by the final theorem.",
+      "ja": "シナリオBの最終行は、最終定理の依存公理を表示するようLeanへ要求します。"
+    },
+    "id": "p-demo-axioms",
+    "quote": "print axioms absurd",
+    "src": "lean/en/ScenarioB.lean:L30-L30",
+    "status": "verified"
+  },
+  {
+    "claim": {
+      "en": "The tracked roadmap records the JA/EN UI, Pygments highlighting, and olean toolchain auto-heal as in place.",
+      "ja": "追跡済みロードマップは、日英UI、Pygments構文強調、oleanツールチェーン自動修復を導入済みと記録しています。"
+    },
+    "id": "p-implemented-ui",
+    "quote": "Bilingual UI, Pygments highlighting, and olean toolchain auto-heal are in place.",
+    "src": ".agent/roadmap.md:L3-L4",
+    "status": "verified"
+  },
+  {
+    "claim": {
+      "en": "Interpretation: the roadmap lists Forward and Backlog items but identifies none as in progress.",
+      "ja": "解釈：ロードマップはForwardとBacklogを列挙しますが、進行中として指定した項目はありません。"
+    },
+    "id": "p-active-unmarked",
+    "quote": "Forward",
+    "src": ".agent/roadmap.md:L9-L15",
+    "status": "inferred"
+  },
+  {
+    "claim": {
+      "en": "Adding Scenario D in JA and EN is the first forward item.",
+      "ja": "日英のシナリオD追加が最初の前方項目です。"
+    },
+    "id": "p-scenario-d",
+    "quote": "ScenarioD (en + ja)",
+    "src": ".agent/roadmap.md:L9-L10",
+    "status": "verified"
+  },
+  {
+    "claim": {
+      "en": "Modeling guideline priority and defeasibility is planned.",
+      "ja": "ガイドラインの優先順位と反証可能性をモデル化する作業が計画されています。"
+    },
+    "id": "p-precedence-planned",
+    "quote": "model guideline priority/defeasibility",
+    "src": ".agent/roadmap.md:L10-L11",
+    "status": "verified"
+  },
+  {
+    "claim": {
+      "en": "Fidelity between axioms and cited sections currently depends on encoder discipline and is the core trust gap.",
+      "ja": "公理と引用元節の忠実性は、現在は符号化者の規律に依存する中核的な信頼ギャップです。"
+    },
+    "id": "p-fidelity-roadmap",
+    "quote": "Faithfulness is encoder-discipline only right now (the core trust gap).",
+    "src": ".agent/roadmap.md:L12-L12",
+    "status": "verified"
+  },
+  {
+    "claim": {
+      "en": "Pinning the Lean toolchain is a backlog item for reproducible builds.",
+      "ja": "Leanツールチェーンの固定は、再現可能なビルドのためのバックログ項目です。"
+    },
+    "id": "p-toolchain-pin",
+    "quote": "Pin the Lean toolchain",
+    "src": ".agent/roadmap.md:L14-L15",
+    "status": "verified"
+  },
+  {
+    "claim": {
+      "en": "The tracked regression harness simultaneously requires CollisionVerified, an exact match to the expected axiom set, and exit code 0.",
+      "ja": "追跡済み回帰ハーネスは、CollisionVerified、期待公理集合との完全一致、終了コード0を同時に要求します。"
+    },
+    "id": "p-regression-contract",
+    "quote": "                result.verdict == Verdict.CollisionVerified\n                and actual_axioms == expected_axioms\n                and result.exit_code == 0",
+    "src": "scripts/check_scenarios.py:L67-L80",
+    "status": "verified"
+  },
+  {
+    "claim": {
+      "en": "The standard Python regression gate was not run during this read-only audit.",
+      "ja": "標準のPython回帰ゲートは、今回の読み取り専用監査では実行されていません。"
+    },
+    "id": "p-standard-run",
+    "quote": "",
+    "src": "",
+    "status": "gap"
+  },
+  {
+    "claim": {
+      "en": "No tracked CI configuration was found.",
+      "ja": "追跡済みCI設定は確認できませんでした。"
+    },
+    "id": "p-ci",
+    "quote": "",
+    "src": "",
+    "status": "gap"
+  }
+]

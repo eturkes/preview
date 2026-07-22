@@ -1,0 +1,88 @@
+/* Renderer-selectable, validated presets. HTML receives one theme-* + one font-* class. */
+.theme-indigo {
+  --accent: #4c57a8;
+  --accent-strong: #343c83;
+  --accent-soft: #e9eafb;
+  --accent-ink: #ffffff;
+}
+
+.theme-ember {
+  --accent: #a8492f;
+  --accent-strong: #7d301f;
+  --accent-soft: #f8e8e2;
+  --accent-ink: #ffffff;
+}
+
+.theme-forest {
+  --accent: #34705a;
+  --accent-strong: #245140;
+  --accent-soft: #e1eee8;
+  --accent-ink: #ffffff;
+}
+
+.theme-plum {
+  --accent: #7a4779;
+  --accent-strong: #593257;
+  --accent-soft: #f2e6f1;
+  --accent-ink: #ffffff;
+}
+
+.theme-graphite {
+  --accent: #4b6073;
+  --accent-strong: #334554;
+  --accent-soft: #e5eaee;
+  --accent-ink: #ffffff;
+}
+
+.font-humanist {
+  --font-ui: "Avenir Next", Avenir, "Segoe UI Variable", "Yu Gothic UI",
+             "Hiragino Sans", Meiryo, sans-serif;
+  --font-display: "Avenir Next", Avenir, "Yu Gothic UI", "Hiragino Sans",
+                  Meiryo, sans-serif;
+}
+
+.font-editorial {
+  --font-ui: "Segoe UI Variable", "Yu Gothic UI", "Hiragino Kaku Gothic ProN",
+             Meiryo, sans-serif;
+  --font-display: "Iowan Old Style", "Palatino Linotype", "Yu Mincho",
+                  "Hiragino Mincho ProN", serif;
+}
+
+.font-technical {
+  --font-ui: "IBM Plex Sans", "Segoe UI", "Yu Gothic UI", Meiryo, sans-serif;
+  --font-display: "SFMono-Regular", Consolas, "BIZ UDPGothic", "Yu Gothic UI",
+                  monospace;
+}
+
+@media (prefers-color-scheme: dark) {
+  .theme-indigo {
+    --accent: #aeb5ff;
+    --accent-strong: #d0d4ff;
+    --accent-soft: #292d58;
+    --accent-ink: #17182d;
+  }
+  .theme-ember {
+    --accent: #f3a58e;
+    --accent-strong: #ffc3b2;
+    --accent-soft: #4a281f;
+    --accent-ink: #28130d;
+  }
+  .theme-forest {
+    --accent: #8ed2b7;
+    --accent-strong: #b5e8d3;
+    --accent-soft: #1c3b30;
+    --accent-ink: #10271f;
+  }
+  .theme-plum {
+    --accent: #d7a5d4;
+    --accent-strong: #efc8ed;
+    --accent-soft: #442a43;
+    --accent-ink: #281727;
+  }
+  .theme-graphite {
+    --accent: #a9bed0;
+    --accent-strong: #d0dce6;
+    --accent-soft: #293743;
+    --accent-ink: #101820;
+  }
+}

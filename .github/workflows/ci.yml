@@ -1,0 +1,62 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  deterministic:
+    name: Deterministic gate
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
+
+      - name: Verify runner runtimes
+        run: |
+          set -euo pipefail
+          python3 --version
+          node --version
+          git --version
+
+      - name: Install pinned ShellCheck and just
+        env:
+          SHELLCHECK_SHA256: 8c3be12b05d5c177a04c29e3c78ce89ac86f1595681cab149b65b97c4e227198
+          JUST_SHA256: fa2a8ec1015d9df5330941ade12437488fc40d33f9c9f8cd4eb70a26de11b639
+        run: |
+          set -euo pipefail
+          shellcheck_archive=$RUNNER_TEMP/shellcheck.tar.xz
+          shellcheck_bin=$RUNNER_TEMP/shellcheck-bin
+          just_archive=$RUNNER_TEMP/just.tar.gz
+          just_bin=$RUNNER_TEMP/just-bin
+          curl --proto '=https' --proto-redir '=https' --tlsv1.2 -fsSL \
+            -o "$shellcheck_archive" \
+            'https://github.com/koalaman/shellcheck/releases/download/v0.11.0/shellcheck-v0.11.0.linux.x86_64.tar.xz'
+          curl --proto '=https' --proto-redir '=https' --tlsv1.2 -fsSL \
+            -o "$just_archive" \
+            'https://github.com/casey/just/releases/download/1.56.0/just-1.56.0-x86_64-unknown-linux-musl.tar.gz'
+          printf '%s  %s\n' "$SHELLCHECK_SHA256" "$shellcheck_archive" | sha256sum -c -
+          printf '%s  %s\n' "$JUST_SHA256" "$just_archive" | sha256sum -c -
+          mkdir -p "$shellcheck_bin" "$just_bin"
+          tar -xf "$shellcheck_archive" -C "$shellcheck_bin" --strip-components=1 \
+            shellcheck-v0.11.0/shellcheck
+          tar -xf "$just_archive" -C "$just_bin"
+          test "$("$shellcheck_bin/shellcheck" --version | sed -n '2s/version: //p')" = '0.11.0'
+          test "$("$just_bin/just" --version)" = 'just 1.56.0'
+          printf '%s\n' "$shellcheck_bin" "$just_bin" >>"$GITHUB_PATH"
+
+      - name: Run deterministic gate
+        run: just ci

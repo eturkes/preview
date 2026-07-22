@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="ja" data-locale="ja" class="{{THEME_CLASS}}">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <meta name="referrer" content="no-referrer">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self'; connect-src 'none'; font-src 'none'; media-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'; worker-src 'none'">
+  <title>{{DOCUMENT_TITLE}}</title>
+  <link rel="stylesheet" href="styles.css" integrity="sha256-{{STYLE_HASH}}">
+  <link rel="stylesheet" href="theme.css" integrity="sha256-{{THEME_HASH}}">
+  <script src="app.js" integrity="sha256-{{SCRIPT_HASH}}" defer></script>
+</head>
+<body>
+  <a class="skip-link" href="#preview-main" data-i18n>
+    <span lang="ja">メインコンテンツへ移動</span>
+    <span lang="en">Skip to main content</span>
+  </a>
+
+  {{BODY_CONTENT}}
+
+  <div class="tour-layer" data-tour-layer hidden>
+    <div class="tour-scrim" data-tour-dismiss aria-hidden="true"></div>
+    <div class="tour-highlight" data-tour-highlight aria-hidden="true" hidden></div>
+    <section class="tour-card" data-tour-card role="dialog" aria-modal="true"
+             aria-labelledby="preview-tour-title" aria-describedby="preview-tour-body"
+             tabindex="-1">
+      <header class="tour-card__header">
+        <div class="tour-meta">
+          <span data-i18n>
+            <span lang="ja">ガイドツアー</span>
+            <span lang="en">Guided tour</span>
+          </span>
+          <span aria-hidden="true">·</span>
+          <span data-tour-progress aria-live="polite">0 / 0</span>
+        </div>
+        <button class="icon-button" type="button" data-tour-close
+                aria-labelledby="preview-tour-close-label">
+          <span aria-hidden="true">×</span>
+          <span class="sr-only" id="preview-tour-close-label" data-i18n data-tour-control="close">
+            <span lang="ja">ツアーを閉じる</span>
+            <span lang="en">Close tour</span>
+          </span>
+        </button>
+      </header>
+
+      <div class="tour-card__content">
+        <h2 id="preview-tour-title" data-tour-title></h2>
+        <p id="preview-tour-body" data-tour-body></p>
+        <p class="tour-missing" data-tour-missing role="status" hidden data-i18n>
+          <span lang="ja">この例では対象領域がありません。説明のみを表示しています。</span>
+          <span lang="en">This example does not include the referenced area. Showing the explanation on its own.</span>
+        </p>
+      </div>
+
+      <footer class="tour-card__footer">
+        <button class="button button--quiet tour-restart" type="button" data-tour-restart data-i18n>
+          <span lang="ja">最初から</span>
+          <span lang="en">Restart</span>
+        </button>
+        <div class="tour-card__nav">
+          <button class="button button--quiet" type="button" data-tour-back data-i18n data-tour-control="back">
+            <span lang="ja">戻る</span>
+            <span lang="en">Back</span>
+          </button>
+          <button class="button button--accent" type="button" data-tour-next>
+            <span data-tour-control="next" data-i18n>
+              <span lang="ja">次へ</span>
+              <span lang="en">Next</span>
+            </span>
+            <span data-tour-control="done" data-i18n hidden>
+              <span lang="ja">完了</span>
+              <span lang="en">Done</span>
+            </span>
+          </button>
+        </div>
+      </footer>
+    </section>
+  </div>
+
+  <p class="sr-only" data-preview-announcer aria-live="polite" aria-atomic="true"></p>
+  <script id="preview-tour" type="application/json">{{PREVIEW_DATA}}</script>
+</body>
+</html>

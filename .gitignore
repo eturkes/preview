@@ -1,0 +1,15 @@
+enabled.txt
+enabled.txt.tmp
+__pycache__/
+*.py[cod]
+.coverage
+.ruff_cache/
+.venv/
+.venv-host/
+.install/
+previews/.partial/*
+previews/.previous/*
+previews/.locks/*
+!previews/.partial/.gitkeep
+!previews/.previous/.gitkeep
+!previews/.locks/.gitkeep

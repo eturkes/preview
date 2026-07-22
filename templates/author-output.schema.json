@@ -1,0 +1,233 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://local.invalid/preview/author-output.schema.json",
+  "title": "Preview author output",
+  "description": "Strict, declarative JA/EN project dashboard. Text and code are data; HTML, CSS, JavaScript, Markdown, URLs, and assets are outside this contract.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["dashboard", "provenance", "gaps"],
+  "properties": {
+    "dashboard": { "$ref": "#/$defs/dashboard" },
+    "provenance": {
+      "type": "array",
+      "maxItems": 256,
+      "items": { "$ref": "#/$defs/provenance" }
+    },
+    "gaps": {
+      "type": "array",
+      "maxItems": 64,
+      "items": { "$ref": "#/$defs/gap" }
+    }
+  },
+  "$defs": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+      "minLength": 1,
+      "maxLength": 64
+    },
+    "localized": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["ja", "en"],
+      "properties": {
+        "ja": { "type": "string", "minLength": 1, "maxLength": 2400 },
+        "en": { "type": "string", "minLength": 1, "maxLength": 2400 }
+      }
+    },
+    "localizedOrEmpty": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["ja", "en"],
+      "properties": {
+        "ja": { "type": "string", "maxLength": 2400 },
+        "en": { "type": "string", "maxLength": 2400 }
+      }
+    },
+    "dashboard": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema_version", "project", "views", "tour"],
+      "properties": {
+        "schema_version": { "type": "integer", "const": 1 },
+        "project": { "$ref": "#/$defs/project" },
+        "views": {
+          "type": "array",
+          "minItems": 3,
+          "maxItems": 8,
+          "items": { "$ref": "#/$defs/view" }
+        },
+        "tour": { "$ref": "#/$defs/tour" }
+      }
+    },
+    "project": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["slug", "name", "eyebrow", "tagline", "summary", "status", "theme", "font"],
+      "properties": {
+        "slug": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "name": { "$ref": "#/$defs/localized" },
+        "eyebrow": { "$ref": "#/$defs/localized" },
+        "tagline": { "$ref": "#/$defs/localized" },
+        "summary": { "$ref": "#/$defs/localized" },
+        "status": { "$ref": "#/$defs/projectStatus" },
+        "theme": { "type": "string", "enum": ["indigo", "ember", "forest", "plum", "graphite"] },
+        "font": { "type": "string", "enum": ["humanist", "editorial", "technical"] }
+      }
+    },
+    "projectStatus": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["label", "tone", "claim_id"],
+      "properties": {
+        "label": { "$ref": "#/$defs/localized" },
+        "tone": { "type": "string", "enum": ["neutral", "info", "positive", "warning", "critical"] },
+        "claim_id": { "$ref": "#/$defs/id" }
+      }
+    },
+    "view": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "kind", "label", "title", "summary", "components"],
+      "properties": {
+        "id": { "$ref": "#/$defs/id" },
+        "kind": { "type": "string", "enum": ["overview", "example", "state"] },
+        "label": { "$ref": "#/$defs/localized" },
+        "title": { "$ref": "#/$defs/localized" },
+        "summary": { "$ref": "#/$defs/localized" },
+        "components": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 12,
+          "items": { "$ref": "#/$defs/component" }
+        }
+      }
+    },
+    "component": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "kind", "title", "body", "tone", "items", "code", "demo"],
+      "properties": {
+        "id": { "$ref": "#/$defs/id" },
+        "kind": { "type": "string", "enum": ["metrics", "facts", "steps", "comparison", "code", "evidence", "demo", "roadmap"] },
+        "title": { "$ref": "#/$defs/localized" },
+        "body": { "$ref": "#/$defs/localized" },
+        "tone": { "type": "string", "enum": ["neutral", "info", "accent", "positive", "warning", "critical"] },
+        "items": {
+          "type": "array",
+          "maxItems": 16,
+          "items": { "$ref": "#/$defs/item" }
+        },
+        "code": { "$ref": "#/$defs/code" },
+        "demo": { "$ref": "#/$defs/demo" }
+      }
+    },
+    "item": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "label", "value", "detail", "status", "magnitude", "claim_id"],
+      "properties": {
+        "id": { "$ref": "#/$defs/id" },
+        "label": { "$ref": "#/$defs/localized" },
+        "value": { "$ref": "#/$defs/localized" },
+        "detail": { "$ref": "#/$defs/localized" },
+        "status": { "type": "string", "enum": ["neutral", "current", "planned", "done", "blocked", "gap"] },
+        "magnitude": { "type": "integer", "minimum": 0, "maximum": 100 },
+        "claim_id": {
+          "type": "string",
+          "pattern": "^(?:|[a-z0-9]+(?:-[a-z0-9]+)*)$",
+          "maxLength": 64
+        }
+      }
+    },
+    "code": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["language", "text", "claim_id"],
+      "properties": {
+        "language": { "type": "string", "maxLength": 32 },
+        "text": { "type": "string", "maxLength": 2400 },
+        "claim_id": {
+          "type": "string",
+          "pattern": "^(?:|[a-z0-9]+(?:-[a-z0-9]+)*)$",
+          "maxLength": 64
+        }
+      }
+    },
+    "demo": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["button", "running", "result_title", "result_body"],
+      "properties": {
+        "button": { "$ref": "#/$defs/localizedOrEmpty" },
+        "running": { "$ref": "#/$defs/localizedOrEmpty" },
+        "result_title": { "$ref": "#/$defs/localizedOrEmpty" },
+        "result_body": { "$ref": "#/$defs/localizedOrEmpty" }
+      }
+    },
+    "tour": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["controls", "steps"],
+      "properties": {
+        "controls": { "$ref": "#/$defs/tourControls" },
+        "steps": {
+          "type": "array",
+          "minItems": 8,
+          "maxItems": 24,
+          "items": { "$ref": "#/$defs/tourStep" }
+        }
+      }
+    },
+    "tourControls": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["next", "back", "done", "close"],
+      "properties": {
+        "next": { "$ref": "#/$defs/localized" },
+        "back": { "$ref": "#/$defs/localized" },
+        "done": { "$ref": "#/$defs/localized" },
+        "close": { "$ref": "#/$defs/localized" }
+      }
+    },
+    "tourStep": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "title", "body", "target", "view", "reveal"],
+      "properties": {
+        "id": { "$ref": "#/$defs/id" },
+        "title": { "$ref": "#/$defs/localized" },
+        "body": { "$ref": "#/$defs/localized" },
+        "target": { "type": "string", "maxLength": 64 },
+        "view": { "type": "string", "maxLength": 64 },
+        "reveal": { "type": "string", "maxLength": 64 }
+      }
+    },
+    "provenance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "claim", "status", "src", "quote"],
+      "properties": {
+        "id": { "$ref": "#/$defs/id" },
+        "claim": { "$ref": "#/$defs/localized" },
+        "status": { "type": "string", "enum": ["verified", "inferred", "gap"] },
+        "src": {
+          "type": "string",
+          "pattern": "^(?:|[^:\\r\\n]+:L?[1-9][0-9]*-L?[1-9][0-9]*)$",
+          "maxLength": 512
+        },
+        "quote": { "type": "string", "maxLength": 2400 }
+      }
+    },
+    "gap": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["topic", "checked", "action"],
+      "properties": {
+        "topic": { "$ref": "#/$defs/localized" },
+        "checked": { "$ref": "#/$defs/localized" },
+        "action": { "$ref": "#/$defs/localized" }
+      }
+    }
+  }
+}
