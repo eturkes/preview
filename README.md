@@ -50,7 +50,7 @@ does not call the source project or pretend to be a live backend.
 
 ## Requirements and install
 
-Runtime: Debian/Linux, Python 3.11+, GNU `timeout`, and an authenticated
+Runtime: Linux, Python 3.11+, GNU `timeout`, and an authenticated
 [`codex`](https://github.com/openai/codex) CLI. Serving needs no Python package
 dependencies. Development additionally uses `just`, Node.js, ShellCheck, Git,
 and curl; the optional browser probe uses ChromiumFish plus GNU `timeout`.
