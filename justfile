@@ -13,6 +13,7 @@ test:
 # Deterministic, token-free gate. This never invokes Codex.
 ci: test
     node --check templates/app.js
+    node --check tools/browser_runtime_probe.mjs
     shellcheck bin/preview tools/*.sh
     git diff --check
     git diff --cached --check

@@ -60,3 +60,11 @@ jobs:
 
       - name: Run deterministic gate
         run: just ci
+
+      - name: Run browser interaction gate
+        env:
+          PREVIEW_PROBE_CHROMIUM: "1"
+        run: |
+          set -euo pipefail
+          chromium=$(command -v google-chrome-stable || command -v google-chrome)
+          PREVIEW_PROBE_CHROMIUM_BIN=$chromium just browser-probe

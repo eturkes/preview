@@ -67,7 +67,8 @@
   const state = {
     locale: "ja",
     view: "",
-    demo: ""
+    demo: "",
+    evidence: ""
   };
 
   /* Locale --------------------------------------------------------------- */
@@ -148,7 +149,7 @@
       replaceQuery("view", null);
     }
     if (settings.announce) {
-      announce("例を切り替えました。", "Example changed.");
+      announce("ビューを切り替えました。", "View changed.");
     }
     document.dispatchEvent(new CustomEvent("preview:view", { detail: { view: next } }));
     return true;
@@ -312,6 +313,263 @@
     });
   });
 
+  /* Evidence review ------------------------------------------------------ */
+  const evidenceNodes = {
+    layer: document.querySelector("[data-evidence-layer]"),
+    drawer: document.querySelector("[data-evidence-drawer]"),
+    rows: Array.from(document.querySelectorAll("[data-evidence-select]")),
+    details: Array.from(document.querySelectorAll("[data-evidence-detail]")),
+    filters: Array.from(document.querySelectorAll("[data-evidence-filter]")),
+    filterEmpty: document.querySelector("[data-evidence-filter-empty]"),
+    review: document.querySelector(".evidence-review")
+  };
+  const compactEvidenceLayout = window.matchMedia("(max-width: 52rem)");
+  const evidence = {
+    active: false,
+    launcher: null
+  };
+
+  function evidenceExists(key) {
+    return evidenceNodes.rows.some(function (row) { return row.dataset.evidenceSelect === key; });
+  }
+
+  function rendered(element) {
+    if (!element || element.hidden || !element.isConnected) return false;
+    const style = window.getComputedStyle(element);
+    return style.display !== "none" && style.visibility !== "hidden" && element.getClientRects().length > 0;
+  }
+
+  function dialogFocusables(scope) {
+    if (!scope) return [];
+    return Array.from(scope.querySelectorAll(
+      "button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), " +
+      "textarea:not([disabled]), [tabindex]:not([tabindex='-1'])"
+    )).filter(rendered);
+  }
+
+  function visibleEvidenceRows() {
+    return evidenceNodes.rows.filter(function (row) { return !row.hidden; });
+  }
+
+  function scrollEvidenceDetail(key) {
+    const detail = evidenceNodes.details.find(function (candidate) {
+      return candidate.dataset.evidenceDetail === key;
+    });
+    if (compactEvidenceLayout.matches && evidenceNodes.review && detail) {
+      evidenceNodes.review.scrollIntoView({
+        block: "start",
+        behavior: "auto"
+      });
+    } else if (evidenceNodes.review) {
+      evidenceNodes.review.scrollTo({
+        top: 0,
+        behavior: "auto"
+      });
+    }
+  }
+
+  function focusEvidenceDetail(key) {
+    const detail = evidenceNodes.details.find(function (candidate) {
+      return candidate.dataset.evidenceDetail === key;
+    });
+    if (detail) detail.focus({ preventScroll: true });
+  }
+
+  function evidenceClaim(key) {
+    const detail = evidenceNodes.details.find(function (candidate) {
+      return candidate.dataset.evidenceDetail === key;
+    });
+    const claim = detail && detail.querySelector(
+      ".evidence-detail__claim > [lang='" + state.locale + "']"
+    );
+    return claim ? claim.textContent.trim() : key;
+  }
+
+  function selectEvidence(key, options) {
+    const settings = Object.assign(
+      { updateUrl: evidence.active, announce: false, scroll: false },
+      options
+    );
+    if (!evidenceExists(key)) return false;
+    state.evidence = key;
+    evidenceNodes.rows.forEach(function (row) {
+      row.setAttribute("aria-pressed", String(row.dataset.evidenceSelect === key));
+    });
+    evidenceNodes.details.forEach(function (detail) {
+      detail.hidden = detail.dataset.evidenceDetail !== key;
+    });
+    if (settings.scroll) scrollEvidenceDetail(key);
+    if (settings.updateUrl) replaceQuery("claim", key);
+    if (settings.announce) {
+      const claim = evidenceClaim(key);
+      announce("根拠の詳細：" + claim, "Evidence detail: " + claim);
+    }
+    document.dispatchEvent(new CustomEvent("preview:evidence", { detail: { claim: key } }));
+    return true;
+  }
+
+  function filterEvidence(status, options) {
+    const settings = Object.assign(
+      { updateUrl: evidence.active, announce: false },
+      options
+    );
+    const allowed = ["all", "verified", "inferred", "gap"];
+    const next = allowed.includes(status) ? status : "all";
+    evidenceNodes.filters.forEach(function (button) {
+      button.setAttribute("aria-pressed", String(button.dataset.evidenceFilter === next));
+    });
+    evidenceNodes.rows.forEach(function (row) {
+      row.hidden = next !== "all" && row.dataset.provenanceStatus !== next;
+    });
+    const visible = visibleEvidenceRows();
+    if (evidenceNodes.filterEmpty) evidenceNodes.filterEmpty.hidden = visible.length > 0;
+    const selectedVisible = visible.some(function (row) {
+      return row.dataset.evidenceSelect === state.evidence;
+    });
+    if (!visible.length) {
+      state.evidence = "";
+      evidenceNodes.rows.forEach(function (row) { row.setAttribute("aria-pressed", "false"); });
+      evidenceNodes.details.forEach(function (detail) { detail.hidden = true; });
+      if (settings.updateUrl) replaceQuery("claim", null);
+    } else if (!selectedVisible) {
+      selectEvidence(visible[0].dataset.evidenceSelect, {
+        updateUrl: settings.updateUrl,
+        announce: false
+      });
+    }
+    if (settings.announce) {
+      const count = visible.length;
+      announce(
+        count ? String(count) + "件の根拠。" + (!selectedVisible ? "先頭の結果を選択しました。" : "") :
+          "一致する根拠はありません。",
+        count ? String(count) + (count === 1 ? " evidence entry. " : " evidence entries. ") +
+          (!selectedVisible ? "First result selected." : "") : "No evidence entries match."
+      );
+    }
+  }
+
+  function closeEvidence(options) {
+    const settings = Object.assign({ returnFocus: true, updateUrl: true }, options);
+    if (!evidence.active) return;
+    evidence.active = false;
+    if (evidenceNodes.layer) evidenceNodes.layer.hidden = true;
+    document.body.classList.remove("evidence-open");
+    const appShell = document.querySelector(".app-shell");
+    if (appShell) appShell.inert = false;
+    if (settings.updateUrl) replaceQuery("claim", null);
+    const returnTarget = evidence.launcher;
+    evidence.launcher = null;
+    if (
+      settings.returnFocus && returnTarget && returnTarget.isConnected &&
+      typeof returnTarget.focus === "function"
+    ) {
+      returnTarget.focus({ preventScroll: true });
+    }
+  }
+
+  function openEvidence(key, launcher, options) {
+    const settings = Object.assign({ updateUrl: true, announce: true }, options);
+    if (!evidenceNodes.layer || !evidenceNodes.drawer || !evidenceNodes.rows.length) {
+      announce("このプレビューには根拠台帳がありません。", "This preview has no evidence ledger.");
+      return false;
+    }
+    if (key && !evidenceExists(key)) return false;
+    if (tour.active) closeTour();
+    evidence.launcher = launcher || document.activeElement || document.querySelector("[data-evidence-launch]");
+    evidence.active = true;
+    evidenceNodes.layer.hidden = false;
+    document.body.classList.add("evidence-open");
+    const appShell = document.querySelector(".app-shell");
+    if (appShell) appShell.inert = true;
+    filterEvidence("all", { updateUrl: false });
+    const visible = visibleEvidenceRows();
+    const next = key || (evidenceExists(state.evidence) ? state.evidence : "") ||
+      (visible[0] ? visible[0].dataset.evidenceSelect : "");
+    if (next) {
+      selectEvidence(next, {
+        updateUrl: settings.updateUrl,
+        announce: false,
+        scroll: false
+      });
+    }
+    if (settings.announce) {
+      const claim = key && next ? evidenceClaim(next) : "";
+      announce(
+        claim ? "根拠レビューを開きました：" + claim : "根拠レビューを開きました。",
+        claim ? "Evidence review opened: " + claim : "Evidence review opened."
+      );
+    }
+    if (key && next) {
+      window.requestAnimationFrame(function () {
+        if (!evidence.active || state.evidence !== next) return;
+        scrollEvidenceDetail(next);
+        focusEvidenceDetail(next);
+      });
+    } else {
+      evidenceNodes.drawer.focus({ preventScroll: true });
+    }
+    return true;
+  }
+
+  document.querySelectorAll("[data-evidence-open]").forEach(function (button) {
+    button.addEventListener("click", function () {
+      openEvidence(button.dataset.evidenceOpen, button);
+    });
+  });
+  document.querySelectorAll("[data-evidence-launch]").forEach(function (button) {
+    button.addEventListener("click", function () { openEvidence("", button); });
+  });
+  evidenceNodes.rows.forEach(function (row) {
+    row.addEventListener("click", function () {
+      selectEvidence(row.dataset.evidenceSelect, { announce: true, scroll: true });
+      focusEvidenceDetail(row.dataset.evidenceSelect);
+    });
+  });
+  evidenceNodes.filters.forEach(function (button) {
+    button.addEventListener("click", function () {
+      filterEvidence(button.dataset.evidenceFilter, { announce: true });
+    });
+  });
+  document.querySelectorAll("[data-evidence-close], [data-evidence-dismiss]").forEach(function (node) {
+    node.addEventListener("click", function () { closeEvidence(); });
+  });
+
+  document.addEventListener("keydown", function (event) {
+    if (!evidence.active) return;
+    if (event.key === "Escape") {
+      event.preventDefault();
+      closeEvidence();
+      return;
+    }
+    if (event.key !== "Tab") return;
+    const focusables = dialogFocusables(evidenceNodes.drawer);
+    if (!focusables.length) {
+      event.preventDefault();
+      evidenceNodes.drawer.focus();
+      return;
+    }
+    const first = focusables[0];
+    const last = focusables[focusables.length - 1];
+    if (event.shiftKey && document.activeElement.matches("[data-evidence-detail]")) {
+      const selectedRow = evidenceNodes.rows.find(function (row) {
+        return row.dataset.evidenceSelect === state.evidence;
+      });
+      if (selectedRow && rendered(selectedRow)) {
+        event.preventDefault();
+        selectedRow.focus();
+      }
+    } else if (
+      event.shiftKey &&
+      (document.activeElement === first || document.activeElement === evidenceNodes.drawer)
+    ) {
+      event.preventDefault();
+      last.focus();
+    } else if (!event.shiftKey && document.activeElement === last) {
+      event.preventDefault();
+      first.focus();
+    }
+  });
+
   /* Guided tour ---------------------------------------------------------- */
   function parseTour() {
     const source = document.getElementById("preview-tour");
@@ -449,6 +707,7 @@
       announce("このプレビューにはツアーがありません。", "This preview has no tour.");
       return;
     }
+    if (evidence.active) closeEvidence({ returnFocus: false });
     tour.launcher = launcher || document.activeElement || document.querySelector("[data-tour-start]");
     tour.priorDemo = state.demo;
     tour.priorView = state.view;
@@ -507,9 +766,7 @@
   }
 
   function tourFocusables() {
-    if (!tourNodes.card) return [];
-    return Array.from(tourNodes.card.querySelectorAll("button:not([disabled]), [href], [tabindex]:not([tabindex='-1'])"))
-      .filter((element) => !element.hidden);
+    return dialogFocusables(tourNodes.card);
   }
 
   document.querySelectorAll("[data-tour-start]").forEach(function (button) {
@@ -595,8 +852,21 @@
     selectTab(tab, false);
   });
 
-  if (queryValue("tour") === "1") {
-    window.requestAnimationFrame(function () { startTour(document.querySelector("[data-tour-start]")); });
+  const queryClaim = queryValue("claim");
+  const queryTour = queryValue("tour") === "1";
+  const initialClaim = queryClaim && evidenceExists(queryClaim) ? queryClaim : "";
+
+  function initializeOverlays() {
+    if (initialClaim) {
+      openEvidence(queryClaim, document.querySelector("[data-evidence-launch]"), {
+        updateUrl: false,
+        announce: false
+      });
+    }
+    if (queryTour) startTour(document.querySelector("[data-tour-start]"));
+    window.requestAnimationFrame(function () { root.dataset.previewReady = "true"; });
   }
-  root.dataset.previewReady = "true";
+
+  if (initialClaim || queryTour) window.requestAnimationFrame(initializeOverlays);
+  else root.dataset.previewReady = "true";
 })();

@@ -52,8 +52,9 @@ does not call the source project or pretend to be a live backend.
 
 Runtime: Linux, Python 3.11+, GNU `timeout`, and an authenticated
 [`codex`](https://github.com/openai/codex) CLI. Serving needs no Python package
-dependencies. Development additionally uses `just`, Node.js, ShellCheck, Git,
-and curl; the optional browser probe uses ChromiumFish plus GNU `timeout`.
+dependencies. Development additionally uses `just`, Node.js 20.10+, ShellCheck,
+Git, and curl; the optional browser probe uses ChromiumFish plus GNU `timeout`,
+and its interaction run enables Node's built-in `WebSocket` client.
 
 ```sh
 just install
@@ -77,6 +78,22 @@ foreign symlink. Keep the checkout at its installed path. With no `just`, run
 > configuration controls quality, cost, and latency. Inspect the exact command
 > and complete stdin prompt with `--dry-run` first.
 
+### First success
+
+From this checkout, with a direct sibling source project named `PROJECT`:
+
+```sh
+preview list
+preview generate --dry-run PROJECT  # review the exact command and prompt
+preview generate PROJECT
+preview serve PROJECT --open        # validate, then open the loopback review UI
+```
+
+Generation prints the host-read and disclosure warning before spending tokens.
+Stop the review server before regenerating the same project.
+
+### Command reference
+
 ```sh
 preview list
 preview status
@@ -96,8 +113,10 @@ preview serve lean-cds --open
 ```
 
 This repository tracks [`previews/lean-cds/`](previews/lean-cds/) as a generated
-end-to-end canary and concrete example of the output contract. Regenerate it
-only when an authenticated Codex run and evidence review are intentional.
+compiler canary and concrete example of the output contract. Recompile its
+derived files from the existing `preview.json` whenever the compiler or trusted
+templates change. Reauthor `preview.json` only when an authenticated Codex run
+and evidence review are intentional.
 
 | Command | Effect |
 | --- | --- |
@@ -179,9 +198,16 @@ citations decode each source once; unique cited source content is capped at 32
 MiB per validation.
 
 The dashboard visibly separates workflow state (`Current`, `Planned`, `Done`,
-`Blocked`, `Gap`) from evidence confidence (`Verified`, `Inferred`, `Evidence
-gap`) for every claim-bearing node. The JSON sidecar remains the complete
-machine-reviewable projection.
+`Blocked`, `Gap`) from evidence confidence (`Source matched`, `Inferred`,
+`Evidence gap`) for every claim-bearing node. Activating an evidence badge opens
+the in-page evidence inspector with the localized claim and status, plus any
+source range and matched quote. The separate gap ledger shows every recorded
+unresolved topic, what was checked, and the smallest useful follow-up.
+`provenance.json` and `gaps.md` remain the raw review sidecars.
+
+`Source matched` means only that the validator found the quoted text in the
+declared final source range. It is not independent proof of truth, context,
+sufficiency, freshness, or translation parity.
 
 Those are structural and literal-occurrence guarantees only. Validation cannot
 prove truth, sufficiency, context, attribution, translation quality, or absence
@@ -195,25 +221,41 @@ committing, sharing, or serving it.
 > defensive response headers. It is not hardened production hosting. `--open`
 > delegates to the local browser configuration; use only with reviewed bundles.
 
+### Reviewer checklist
+
+- Switch between JA and EN; check meaning, specificity, and safe terminology.
+- Open each evidence badge; compare the claim and status with any source range
+  and matched quote.
+- Review every gap's checked evidence and follow-up; accept or resolve it explicitly.
+- Run `preview validate PROJECT` against the intended current sibling source.
+- Inspect published and retained staged bytes for secrets, identifiers, unsafe
+  excerpts, and claims that exceed their evidence before sharing or committing.
+
 ## Development
 
 ```sh
 just test           # stdlib compile + unittest suite
 just ci             # test + Node syntax + ShellCheck + git diff checks; no Codex
-just browser-probe  # validate + curl a fixture; optional real Chromium DOM dump
+just browser-probe  # validate + curl a fixture; optional Chromium interaction probe
 PREVIEW_PROBE_CHROMIUM=1 just browser-probe
 ```
 
-The browser probe uses `PREVIEW_PROBE_BUNDLE` and `PREVIEW_PROBE_SOURCE`, or
-`testdata/valid` and `testdata/source` when present. With no default fixture it
-prints a skip message. It exercises only deterministic validation, loopback
-serving, headers, and DOM retrieval; it never invokes Codex and deliberately
-avoids screenshot/pixel assertions.
-If ChromiumFish stalls in the known software-GL initialization path, the curl
-DOM/header probe remains valid evidence but JavaScript execution is unconfirmed;
-the opt-in Chromium probe exits nonzero rather than claiming success.
+The browser probe defaults to the tracked `testdata/valid` model and
+`testdata/source`; override both paths with a complete validator-clean bundle
+and its source tree. The opt-in interaction run requires populated `verified`,
+`inferred`, and `gap` claims and accepts an explicit browser path through
+`PREVIEW_PROBE_CHROMIUM_BIN`. The probe exercises
+deterministic validation, loopback serving, headers, and DOM retrieval; the
+Chromium run also exercises evidence deep links, filters, modal focus/close
+behavior, and tour exclusivity. It never invokes Codex and deliberately avoids
+screenshot/pixel assertions. If Chromium stalls in the known software-GL
+initialization path, the curl DOM/header probe remains valid evidence but
+JavaScript execution is unconfirmed; the opt-in Chromium probe exits nonzero
+rather than claiming success.
 
-GitHub CI runs `just ci` without Codex credentials or generation. Local and CI
-gates may create ignored Python bytecode only; they do not format sources.
+GitHub CI runs `just ci` plus the tracked browser fixture without Codex
+credentials or generation. Local and CI gates may create ignored Python
+bytecode and browser scratch under `.install/`; handled exits clean the scratch.
+The gates do not format sources.
 
 Licensed under [Apache-2.0 WITH LLVM-exception](LICENSE).

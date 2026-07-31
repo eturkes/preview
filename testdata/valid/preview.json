@@ -1,0 +1,450 @@
+{
+  "dashboard": {
+    "project": {
+      "eyebrow": {
+        "en": "EN-work in progress",
+        "ja": "日-work in progress"
+      },
+      "font": "humanist",
+      "name": {
+        "en": "EN-sample",
+        "ja": "日-sample"
+      },
+      "slug": "sample",
+      "status": {
+        "claim_id": "status-claim",
+        "label": {
+          "en": "EN-active",
+          "ja": "日-active"
+        },
+        "tone": "positive"
+      },
+      "summary": {
+        "en": "EN-project summary",
+        "ja": "日-project summary"
+      },
+      "tagline": {
+        "en": "EN-example dashboard",
+        "ja": "日-example dashboard"
+      },
+      "theme": "indigo"
+    },
+    "schema_version": 1,
+    "tour": {
+      "controls": {
+        "back": {
+          "en": "EN-back",
+          "ja": "日-back"
+        },
+        "close": {
+          "en": "EN-close",
+          "ja": "日-close"
+        },
+        "done": {
+          "en": "EN-done",
+          "ja": "日-done"
+        },
+        "next": {
+          "en": "EN-next",
+          "ja": "日-next"
+        }
+      },
+      "steps": [
+        {
+          "body": {
+            "en": "EN-intro-step body",
+            "ja": "日-intro-step body"
+          },
+          "id": "intro-step",
+          "reveal": "",
+          "target": "",
+          "title": {
+            "en": "EN-intro-step",
+            "ja": "日-intro-step"
+          },
+          "view": ""
+        },
+        {
+          "body": {
+            "en": "EN-header-step body",
+            "ja": "日-header-step body"
+          },
+          "id": "header-step",
+          "reveal": "",
+          "target": "project-header",
+          "title": {
+            "en": "EN-header-step",
+            "ja": "日-header-step"
+          },
+          "view": ""
+        },
+        {
+          "body": {
+            "en": "EN-overview-step body",
+            "ja": "日-overview-step body"
+          },
+          "id": "overview-step",
+          "reveal": "",
+          "target": "overview-card",
+          "title": {
+            "en": "EN-overview-step",
+            "ja": "日-overview-step"
+          },
+          "view": "overview"
+        },
+        {
+          "body": {
+            "en": "EN-demo-step body",
+            "ja": "日-demo-step body"
+          },
+          "id": "demo-step",
+          "reveal": "",
+          "target": "demo-card",
+          "title": {
+            "en": "EN-demo-step",
+            "ja": "日-demo-step"
+          },
+          "view": "example"
+        },
+        {
+          "body": {
+            "en": "EN-state-step body",
+            "ja": "日-state-step body"
+          },
+          "id": "state-step",
+          "reveal": "",
+          "target": "state-card",
+          "title": {
+            "en": "EN-state-step",
+            "ja": "日-state-step"
+          },
+          "view": "state"
+        },
+        {
+          "body": {
+            "en": "EN-result-step body",
+            "ja": "日-result-step body"
+          },
+          "id": "result-step",
+          "reveal": "demo-card",
+          "target": "",
+          "title": {
+            "en": "EN-result-step",
+            "ja": "日-result-step"
+          },
+          "view": "example"
+        },
+        {
+          "body": {
+            "en": "EN-status-step body",
+            "ja": "日-status-step body"
+          },
+          "id": "status-step",
+          "reveal": "",
+          "target": "project-status",
+          "title": {
+            "en": "EN-status-step",
+            "ja": "日-status-step"
+          },
+          "view": ""
+        },
+        {
+          "body": {
+            "en": "EN-nav-step body",
+            "ja": "日-nav-step body"
+          },
+          "id": "nav-step",
+          "reveal": "",
+          "target": "view-nav",
+          "title": {
+            "en": "EN-nav-step",
+            "ja": "日-nav-step"
+          },
+          "view": ""
+        }
+      ]
+    },
+    "views": [
+      {
+        "components": [
+          {
+            "body": {
+              "en": "EN-overview body",
+              "ja": "日-overview body"
+            },
+            "code": {
+              "claim_id": "",
+              "language": "",
+              "text": ""
+            },
+            "demo": {
+              "button": {
+                "en": "",
+                "ja": ""
+              },
+              "result_body": {
+                "en": "",
+                "ja": ""
+              },
+              "result_title": {
+                "en": "",
+                "ja": ""
+              },
+              "running": {
+                "en": "",
+                "ja": ""
+              }
+            },
+            "id": "overview-card",
+            "items": [
+              {
+                "claim_id": "overview-claim",
+                "detail": {
+                  "en": "EN-overview detail",
+                  "ja": "日-overview detail"
+                },
+                "id": "overview-item",
+                "label": {
+                  "en": "EN-overview label",
+                  "ja": "日-overview label"
+                },
+                "magnitude": 60,
+                "status": "current",
+                "value": {
+                  "en": "EN-overview value",
+                  "ja": "日-overview value"
+                }
+              }
+            ],
+            "kind": "facts",
+            "title": {
+              "en": "EN-overview title",
+              "ja": "日-overview title"
+            },
+            "tone": "neutral"
+          }
+        ],
+        "id": "overview",
+        "kind": "overview",
+        "label": {
+          "en": "EN-overview",
+          "ja": "日-overview"
+        },
+        "summary": {
+          "en": "EN-overview summary",
+          "ja": "日-overview summary"
+        },
+        "title": {
+          "en": "EN-overview title",
+          "ja": "日-overview title"
+        }
+      },
+      {
+        "components": [
+          {
+            "body": {
+              "en": "EN-demo body",
+              "ja": "日-demo body"
+            },
+            "code": {
+              "claim_id": "",
+              "language": "",
+              "text": ""
+            },
+            "demo": {
+              "button": {
+                "en": "EN-run",
+                "ja": "日-run"
+              },
+              "result_body": {
+                "en": "EN-result body",
+                "ja": "日-result body"
+              },
+              "result_title": {
+                "en": "EN-result",
+                "ja": "日-result"
+              },
+              "running": {
+                "en": "EN-running",
+                "ja": "日-running"
+              }
+            },
+            "id": "demo-card",
+            "items": [
+              {
+                "claim_id": "demo-claim",
+                "detail": {
+                  "en": "EN-demo detail",
+                  "ja": "日-demo detail"
+                },
+                "id": "demo-item",
+                "label": {
+                  "en": "EN-demo label",
+                  "ja": "日-demo label"
+                },
+                "magnitude": 60,
+                "status": "current",
+                "value": {
+                  "en": "EN-demo value",
+                  "ja": "日-demo value"
+                }
+              }
+            ],
+            "kind": "demo",
+            "title": {
+              "en": "EN-demo title",
+              "ja": "日-demo title"
+            },
+            "tone": "neutral"
+          }
+        ],
+        "id": "example",
+        "kind": "example",
+        "label": {
+          "en": "EN-example",
+          "ja": "日-example"
+        },
+        "summary": {
+          "en": "EN-example summary",
+          "ja": "日-example summary"
+        },
+        "title": {
+          "en": "EN-example title",
+          "ja": "日-example title"
+        }
+      },
+      {
+        "components": [
+          {
+            "body": {
+              "en": "EN-state body",
+              "ja": "日-state body"
+            },
+            "code": {
+              "claim_id": "",
+              "language": "",
+              "text": ""
+            },
+            "demo": {
+              "button": {
+                "en": "",
+                "ja": ""
+              },
+              "result_body": {
+                "en": "",
+                "ja": ""
+              },
+              "result_title": {
+                "en": "",
+                "ja": ""
+              },
+              "running": {
+                "en": "",
+                "ja": ""
+              }
+            },
+            "id": "state-card",
+            "items": [
+              {
+                "claim_id": "state-claim",
+                "detail": {
+                  "en": "EN-state detail",
+                  "ja": "日-state detail"
+                },
+                "id": "state-item",
+                "label": {
+                  "en": "EN-state label",
+                  "ja": "日-state label"
+                },
+                "magnitude": 60,
+                "status": "current",
+                "value": {
+                  "en": "EN-state value",
+                  "ja": "日-state value"
+                }
+              }
+            ],
+            "kind": "roadmap",
+            "title": {
+              "en": "EN-state title",
+              "ja": "日-state title"
+            },
+            "tone": "neutral"
+          }
+        ],
+        "id": "state",
+        "kind": "state",
+        "label": {
+          "en": "EN-state",
+          "ja": "日-state"
+        },
+        "summary": {
+          "en": "EN-state summary",
+          "ja": "日-state summary"
+        },
+        "title": {
+          "en": "EN-state title",
+          "ja": "日-state title"
+        }
+      }
+    ]
+  },
+  "gaps": [
+    {
+      "action": {
+        "en": "EN-browser fixture action",
+        "ja": "日-browser fixture action"
+      },
+      "checked": {
+        "en": "EN-browser fixture checked",
+        "ja": "日-browser fixture checked"
+      },
+      "topic": {
+        "en": "EN-browser fixture topic",
+        "ja": "日-browser fixture topic"
+      }
+    }
+  ],
+  "provenance": [
+    {
+      "claim": {
+        "en": "EN-status-claim",
+        "ja": "日-status-claim"
+      },
+      "id": "status-claim",
+      "quote": "Status evidence",
+      "src": "source.txt:1-1",
+      "status": "verified"
+    },
+    {
+      "claim": {
+        "en": "EN-overview-claim",
+        "ja": "日-overview-claim"
+      },
+      "id": "overview-claim",
+      "quote": "Overview evidence",
+      "src": "source.txt:2-2",
+      "status": "inferred"
+    },
+    {
+      "claim": {
+        "en": "EN-demo-claim",
+        "ja": "日-demo-claim"
+      },
+      "id": "demo-claim",
+      "quote": "",
+      "src": "",
+      "status": "gap"
+    },
+    {
+      "claim": {
+        "en": "EN-state-claim",
+        "ja": "日-state-claim"
+      },
+      "id": "state-claim",
+      "quote": "State evidence",
+      "src": "source.txt:4-4",
+      "status": "verified"
+    }
+  ]
+}

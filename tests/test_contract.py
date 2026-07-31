@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import copy
+import html
 import json
 import tempfile
 import unittest
@@ -8,7 +9,13 @@ from pathlib import Path
 from unittest import mock
 
 from preview_tool.render import compiled_files
-from preview_tool.schema import ContractJSONError, DuplicateKeyError, canonical_json, loads_strict
+from preview_tool.schema import (
+    ContractJSONError,
+    DuplicateKeyError,
+    canonical_json,
+    loads_strict,
+    validate_structure,
+)
 from preview_tool.validation import validate_bundle, validate_model
 
 
@@ -52,6 +59,10 @@ def component(name: str, kind: str, claim: str) -> dict[str, object]:
         "code": {"language": "", "text": "", "claim_id": ""},
         "demo": demo,
     }
+
+
+def gap(name: str) -> dict[str, dict[str, str]]:
+    return {key: loc(f"{name} {key}") for key in ("topic", "checked", "action")}
 
 
 def valid_data(slug: str = "sample") -> dict[str, object]:
@@ -405,6 +416,8 @@ class ContractTests(unittest.TestCase):
 
     def test_render_is_deterministic(self) -> None:
         data = valid_data()
+        data["provenance"][1].update({"status": "gap", "src": "", "quote": ""})  # type: ignore[index]
+        data["gaps"] = [gap("deterministic")]
         self.assertEqual(
             compiled_files(data, self.templates),
             compiled_files(copy.deepcopy(data), self.templates),
@@ -436,6 +449,88 @@ class ContractTests(unittest.TestCase):
         self.assertIn('data-status="current"', page)
         self.assertIn('data-evidence-status="gap"', page)
 
+    def test_evidence_inspector_has_one_trigger_select_and_detail_per_claim(self) -> None:
+        data = valid_data()
+        data["provenance"][1]["status"] = "inferred"  # type: ignore[index]
+        data["provenance"][2].update({"status": "gap", "src": "", "quote": ""})  # type: ignore[index]
+        page = compiled_files(data, self.templates)["index.html"].decode("utf-8")
+        provenance = data["provenance"]
+
+        self.assertEqual(page.count("data-evidence-open="), len(provenance))
+        self.assertEqual(page.count("data-evidence-select="), len(provenance))
+        self.assertEqual(page.count("data-evidence-detail="), len(provenance))
+        self.assertEqual(page.count('id="preview-evidence-drawer"'), 1)
+        self.assertEqual(page.count('id="preview-evidence-title"'), 1)
+        self.assertIn('aria-labelledby="preview-evidence-title"', page)
+        status_labels = {
+            "verified": ("Source matched", "出典一致"),
+            "inferred": ("Inferred", "根拠から推論"),
+            "gap": ("Evidence gap", "根拠未確認"),
+        }
+        for row in provenance:
+            claim_id = row["id"]
+            trigger = f'data-evidence-open="{claim_id}"'
+            self.assertEqual(page.count(trigger), 1)
+            trigger_offset = page.index(trigger)
+            trigger_start = page.rfind("<", 0, trigger_offset)
+            self.assertTrue(page.startswith("<button", trigger_start))
+            trigger_markup = page[trigger_start : page.index("</button>", trigger_offset)]
+            self.assertEqual(page.count(f'data-evidence-select="{claim_id}"'), 1)
+            self.assertEqual(page.count(f'data-evidence-detail="{claim_id}"'), 1)
+            detail_offset = page.index(f'data-evidence-detail="{claim_id}"')
+            detail_start = page.rfind("<article", 0, detail_offset)
+            detail_open = page[detail_start : page.index(">", detail_offset)]
+            self.assertIn('tabindex="0"', detail_open)
+            self.assertEqual(page.count(f'id="preview-evidence-claim-{claim_id}"'), 1)
+            self.assertIn(f'aria-labelledby="preview-evidence-claim-{claim_id}"', page)
+            row_offset = page.index(f'data-evidence-select="{claim_id}"')
+            row_start = page.rfind("<button", 0, row_offset)
+            row_markup = page[row_start : page.index("</button>", row_offset)]
+            for label in status_labels[row["status"]]:
+                self.assertIn(label, row_markup)
+            self.assertIn(
+                html.escape(f'Review evidence: {row["claim"]["en"]} — Status:', quote=True),
+                trigger_markup,
+            )
+            self.assertIn(
+                html.escape(f'根拠を確認：{row["claim"]["ja"]} — 状態：', quote=True),
+                trigger_markup,
+            )
+
+    def test_evidence_inspector_escapes_localized_claim_source_and_quote(self) -> None:
+        data = valid_data()
+        row = data["provenance"][0]  # type: ignore[index]
+        row["claim"] = {
+            "ja": '主張 <確認> & "引用"',
+            "en": 'Claim <checked> & "quoted"',
+        }
+        row["src"] = 'src/<module>&"name".py:L1-L2'
+        row["quote"] = '<tag attr="value">& exact evidence</tag>'
+
+        page = compiled_files(data, self.templates)["index.html"].decode("utf-8")
+        for value in (*row["claim"].values(), row["src"], row["quote"]):
+            self.assertIn(html.escape(value, quote=True), page)
+            self.assertNotIn(value, page)
+
+    def test_evidence_inspector_renders_structured_gap_entries(self) -> None:
+        data = valid_data()
+        data["provenance"][1].update({"status": "gap", "src": "", "quote": ""})  # type: ignore[index]
+        data["gaps"] = [gap("first"), gap("second")]
+
+        page = compiled_files(data, self.templates)["index.html"].decode("utf-8")
+        self.assertEqual(page.count("data-gap-entry"), 2)
+        for row in data["gaps"]:
+            self.assertEqual(set(row), {"topic", "checked", "action"})
+            for field in ("topic", "checked", "action"):
+                for value in row[field].values():
+                    self.assertIn(html.escape(value, quote=True), page)
+
+    def test_evidence_inspector_renders_empty_gap_ledger_state(self) -> None:
+        page = compiled_files(valid_data(), self.templates)["index.html"].decode("utf-8")
+        self.assertNotIn("data-gap-entry", page)
+        self.assertIn("No structured open questions are recorded.", page)
+        self.assertIn("構造化された未解決事項はありません。", page)
+
     def test_closed_bundle_and_exact_derived_bytes(self) -> None:
         data = valid_data()
         bundle = self.artifacts / "sample"
@@ -452,6 +547,32 @@ class ContractTests(unittest.TestCase):
         report = validate_bundle(bundle, "sample", self.source, self.artifacts, self.templates)
         self.assertIn("bundle.entries", {finding.code for finding in report.findings})
         self.assertIn("bundle.entry-kind", {finding.code for finding in report.findings})
+
+    def test_tracked_canary_matches_canonical_compiler(self) -> None:
+        repository = Path(__file__).resolve().parents[1]
+        bundle = repository / "previews" / "lean-cds"
+        data = loads_strict((bundle / "preview.json").read_bytes())
+        self.assertEqual(validate_structure(data, "lean-cds"), [])
+        for name, content in compiled_files(data, repository / "templates").items():
+            with self.subTest(name=name):
+                self.assertEqual((bundle / name).read_bytes(), content)
+
+    def test_tracked_browser_model_is_validator_clean(self) -> None:
+        repository = Path(__file__).resolve().parents[1]
+        model_dir = repository / "testdata" / "valid"
+        source = repository / "testdata" / "source"
+        raw = (model_dir / "preview.json").read_bytes()
+        data = loads_strict(raw)
+
+        self.assertEqual(canonical_json(data), raw)
+        self.assertEqual(validate_structure(data, "sample"), [])
+        self.assertGreaterEqual(len(data["provenance"]), 2)
+        self.assertEqual(
+            {row["status"] for row in data["provenance"]},
+            {"verified", "inferred", "gap"},
+        )
+        report = validate_model(raw, "sample", source, repository / "previews")
+        self.assertTrue(report.ok, report.format())
 
     def test_malformed_bundle_surrogate_is_reported_without_crashing(self) -> None:
         bundle = self.artifacts / "sample"

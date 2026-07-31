@@ -31,7 +31,11 @@ class ServerTests(unittest.TestCase):
                         self.assertRaises(urllib.error.HTTPError) as caught,
                     ):
                         urllib.request.urlopen(f"{base}{path}", timeout=2)
-                    self.assertEqual(caught.exception.code, 404)
+                    error = caught.exception
+                    try:
+                        self.assertEqual(error.code, 404)
+                    finally:
+                        error.close()
             finally:
                 server.shutdown()
                 server.server_close()
