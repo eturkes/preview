@@ -9,10 +9,12 @@ default:
 test:
     python3 -m compileall -q src tests
     PYTHONPATH=src python3 -m unittest discover -s tests -p 'test_*.py'
+    node tools/plugin_runtime_test.mjs
 
 # Deterministic, token-free gate. This never invokes Codex.
 ci: test
     node --check templates/app.js
+    node --check templates/plugin-runtime.js
     node --check tools/browser_runtime_probe.mjs
     shellcheck bin/preview tools/*.sh
     git diff --check

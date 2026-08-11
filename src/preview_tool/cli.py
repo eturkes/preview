@@ -10,6 +10,7 @@ from . import __version__
 from .discovery import discover, representable, require_project
 from .generation import dry_run, generate_batch, generate_project
 from .paths import ProjectPaths, repo_root
+from .plugin import build_plugin
 from .publication import ProjectLock
 from .server import serve
 from .state import Action, apply_action, format_status, read_state
@@ -46,6 +47,10 @@ def parser() -> argparse.ArgumentParser:
     server.add_argument("name")
     server.add_argument("--port", type=int, default=4173)
     server.add_argument("--open", action="store_true", dest="open_browser")
+    subcommands.add_parser(
+        "plugin-build",
+        help="validate current-source publishes and build one in-progress static plugin",
+    )
     return command
 
 
@@ -152,6 +157,19 @@ def main(argv: list[str] | None = None, *, root: Path | None = None) -> int:
                     print(_report_text(report), file=sys.stderr)
                     return 1
                 serve(paths.live, args.port, open_browser=args.open_browser)
+            return 0
+        if args.command == "plugin-build":
+            result = build_plugin(actual_root)
+            count = len(result.projects)
+            noun = "dashboard" if count == 1 else "dashboards"
+            location = result.output.relative_to(actual_root)
+            print(f"built {location} with {count} {noun}")
+            if result.skipped:
+                names = ", ".join(result.skipped)
+                print(
+                    f"preview: skipped published previews without a current sibling: {names}",
+                    file=sys.stderr,
+                )
             return 0
     except (OSError, RuntimeError, ValueError) as error:
         print(f"preview: {escape_controls(error)}", file=sys.stderr)

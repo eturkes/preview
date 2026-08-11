@@ -87,6 +87,7 @@ preview list
 preview generate --dry-run PROJECT  # review the exact command and prompt
 preview generate PROJECT
 preview serve PROJECT --open        # validate, then open the loopback review UI
+preview plugin-build                # validate current publishes, then build one in-progress plugin
 ```
 
 Generation prints the host-read and disclosure warning before spending tokens.
@@ -110,6 +111,7 @@ preview validate lean-cds
 preview serve lean-cds --port 4173
 preview serve lean-cds --port 0      # kernel-selected loopback port
 preview serve lean-cds --open
+preview plugin-build                 # dist/in-progress-plugin
 ```
 
 This repository tracks [`previews/lean-cds/`](previews/lean-cds/) as a generated
@@ -128,6 +130,29 @@ and evidence review are intentional.
 | `generate [NAME] [--dry-run]` | Generate one project or the enabled set. |
 | `validate NAME` | Revalidate one published bundle against its current sibling. |
 | `serve NAME [--port N] [--open]` | Validate, then serve one bundle on loopback. |
+| `plugin-build` | Validate current-source publishes and build one static in-progress plugin. |
+
+### in-progress plugin
+
+`preview plugin-build` validates every non-hidden published bundle that still
+has a current sibling source against that source and the trusted templates,
+then atomically replaces `dist/in-progress-plugin/`. Stale publishes without a
+current sibling are excluded with a warning; any included validation failure
+preserves the prior plugin. The output has two files: a strict
+`in-progress.plugin.json` manifest and one self-contained `index.html`; it
+performs no Codex call and requests no host capabilities.
+
+Configure that output directory in in-progress and restart its host. The plugin
+accepts the API 1.0 `MessageChannel` handshake, matches the selected in-progress
+`project.id` to an exact Preview project slug, and initializes only that
+dashboard. A selected project without a packaged publish gets a visible
+bilingual unavailable state. All trusted CSS and JavaScript are inline so the
+dashboard works in in-progress's opaque-origin iframe without weakening the
+canonical bundle CSP or file contract.
+
+The plugin is a derived aggregate snapshot. Re-run `plugin-build` after any
+publish changes. Canonical `previews/<project>/` directories remain unchanged
+and independently validator-clean.
 
 An empty enabled set succeeds. Batch generation continues after failures and
 exits nonzero if any target failed. Named generation failures use stderr;
@@ -175,6 +200,9 @@ previews/<project>/                    published, reviewable bundle
 previews/.partial/<project>/           ignored generation/failure stage
 previews/.previous/<project>/          ignored crash-recovery backup
 previews/.locks/<project>.lock         ignored advisory project lock
+dist/in-progress-plugin/               ignored derived aggregate plugin
+  in-progress.plugin.json
+  index.html
 ```
 
 Publication promotes complete directories with a live-to-backup, stage-to-live
@@ -234,7 +262,7 @@ committing, sharing, or serving it.
 ## Development
 
 ```sh
-just test           # stdlib compile + unittest suite
+just test           # stdlib compile + Python suite + plugin handshake unit probe
 just ci             # test + Node syntax + ShellCheck + git diff checks; no Codex
 just browser-probe  # validate + curl a fixture; optional Chromium interaction probe
 PREVIEW_PROBE_CHROMIUM=1 just browser-probe

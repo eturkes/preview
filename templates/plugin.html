@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="ja" data-locale="ja" class="theme-graphite font-humanist">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <meta name="referrer" content="no-referrer">
+  <title>Preview</title>
+  <style>
+{{INLINE_STYLES}}
+
+.preview-plugin-state {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 2rem;
+}
+
+.preview-plugin-state__card {
+  width: min(38rem, 100%);
+  padding: clamp(1.5rem, 4vw, 2.5rem);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  box-shadow: var(--shadow-md);
+}
+
+.preview-plugin-state__eyebrow {
+  color: var(--accent-strong);
+  font-size: 0.75rem;
+  font-weight: 750;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.preview-plugin-state__card h1 { font-family: var(--font-display); }
+.preview-plugin-state__card code { overflow-wrap: anywhere; }
+  </style>
+  <script id="preview-plugin-data" type="application/json">{{DASHBOARD_DATA}}</script>
+  <script id="preview-plugin-dashboard-runtime" type="application/x-preview-runtime">{{PREVIEW_RUNTIME}}</script>
+</head>
+<body>
+  <main class="preview-plugin-state" id="preview-plugin-state" role="status" aria-live="polite">
+    <section class="preview-plugin-state__card">
+      <p class="preview-plugin-state__eyebrow">Preview</p>
+      <h1>接続中 / Connecting</h1>
+      <p>選択中のプロジェクトを待っています。 / Waiting for the selected project.</p>
+    </section>
+  </main>
+  <script>{{PLUGIN_RUNTIME}}</script>
+</body>
+</html>
