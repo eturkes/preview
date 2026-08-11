@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import json
+import os
 import shutil
 import subprocess
 import sys
@@ -16,9 +18,11 @@ from preview_tool.generation import (
     REPAIR_MAX_FINDINGS,
     _repair_feedback,
     _run_codex,
+    compile_project,
     generate_project,
     plan_generation,
 )
+from preview_tool.render import compiled_files
 from preview_tool.schema import canonical_json
 from preview_tool.validation import Finding, Report, validate_bundle
 
@@ -62,6 +66,103 @@ class GenerationTests(unittest.TestCase):
                 root / "templates",
             )
             self.assertTrue(report.ok, report.format())
+
+    def test_compile_canonicalizes_repairs_and_is_deterministic_without_codex(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            parent = Path(temporary)
+            root, source = self.workspace(parent)
+            live = root / "previews" / "sample"
+            live.mkdir()
+            data = valid_data()
+            raw = json.dumps(data, ensure_ascii=False, separators=(",", ":")).encode("utf-8")
+            (live / "preview.json").write_bytes(raw)
+            (live / "stale").write_text("replaced", encoding="utf-8")
+            model = parent / "model.json"
+            model.write_bytes(raw)
+
+            first_outcome = compile_project(root, "sample", model)
+            self.assertTrue(first_outcome.ok, first_outcome.message)
+            self.assertEqual((live / "preview.json").read_bytes(), canonical_json(data))
+            self.assertFalse((live / "stale").exists())
+            first = {entry.name: entry.read_bytes() for entry in sorted(live.iterdir())}
+            self.assertEqual(
+                set(first),
+                {"preview.json", *compiled_files(data, root / "templates")},
+            )
+            report = validate_bundle(live, "sample", source, root / "previews", root / "templates")
+            self.assertTrue(report.ok, report.format())
+
+            second_outcome = compile_project(root, "sample")
+            second = {entry.name: entry.read_bytes() for entry in sorted(live.iterdir())}
+            self.assertTrue(second_outcome.ok, second_outcome.message)
+            self.assertEqual(first, second)
+
+    def test_compile_invalid_or_symlinked_input_preserves_valid_live(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            parent = Path(temporary)
+            root, _ = self.workspace(parent)
+            live = root / "previews" / "sample"
+            live.mkdir()
+            data = valid_data()
+            (live / "preview.json").write_bytes(canonical_json(data))
+            for name, content in compiled_files(data, root / "templates").items():
+                (live / name).write_bytes(content)
+            before = {entry.name: entry.read_bytes() for entry in sorted(live.iterdir())}
+
+            invalid = parent / "invalid.json"
+            invalid.write_bytes(b"{}\n")
+            outcome = compile_project(root, "sample", invalid)
+            after = {entry.name: entry.read_bytes() for entry in sorted(live.iterdir())}
+            self.assertFalse(outcome.ok)
+            self.assertIn("no live bundle replaced for sample", outcome.message)
+            self.assertEqual(before, after)
+
+            target = parent / "target.json"
+            target.write_bytes(canonical_json(valid_data()))
+            symlink = parent / "model.json"
+            symlink.symlink_to(target.name)
+            with self.assertRaisesRegex(ValueError, "cannot read model safely"):
+                compile_project(root, "sample", symlink)
+            fifo = parent / "model.fifo"
+            os.mkfifo(fifo)
+            started = time.monotonic()
+            with self.assertRaisesRegex(ValueError, "cannot read model safely"):
+                compile_project(root, "sample", fifo)
+            self.assertLess(time.monotonic() - started, 1)
+            with self.assertRaisesRegex(ValueError, "outside the reserved previews directory"):
+                compile_project(root, "sample", live / "preview.json")
+            self.assertEqual(
+                before,
+                {entry.name: entry.read_bytes() for entry in sorted(live.iterdir())},
+            )
+
+    def test_compile_external_model_can_create_first_publish(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            parent = Path(temporary)
+            root, source = self.workspace(parent)
+            model = parent / "model.json"
+            model.write_bytes(canonical_json(valid_data()))
+
+            outcome = compile_project(root, "sample", model)
+            live = root / "previews" / "sample"
+            self.assertTrue(outcome.ok, outcome.message)
+            report = validate_bundle(live, "sample", source, root / "previews", root / "templates")
+            self.assertTrue(report.ok, report.format())
+
+    def test_compile_rejects_symlinked_live_directory(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            parent = Path(temporary)
+            root, _ = self.workspace(parent)
+            target = parent / "target"
+            target.mkdir()
+            live = root / "previews" / "sample"
+            live.symlink_to(target, target_is_directory=True)
+            model = parent / "model.json"
+            model.write_bytes(canonical_json(valid_data()))
+
+            with self.assertRaisesRegex(ValueError, "not a real directory"):
+                compile_project(root, "sample", model)
+            self.assertTrue(live.is_symlink())
 
     def test_invalid_output_retries_and_preserves_live(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:

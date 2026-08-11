@@ -78,6 +78,16 @@ class CliTests(unittest.TestCase):
             self.assertEqual(stdout, "")
             self.assertIn("another preview operation owns this project", stderr)
 
+    def test_compile_fails_closed_while_project_lock_is_owned(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = self.workspace(Path(temporary))
+            lock = root / "previews" / ".locks" / "alpha.lock"
+            with ProjectLock(lock):
+                code, stdout, stderr = self.invoke(root, ["compile", "alpha"])
+            self.assertEqual(code, 1)
+            self.assertEqual(stdout, "")
+            self.assertIn("another preview operation owns this project", stderr)
+
 
 if __name__ == "__main__":
     unittest.main()

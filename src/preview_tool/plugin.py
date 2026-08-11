@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import re
 import stat
 from contextlib import ExitStack
 from dataclasses import dataclass
@@ -48,7 +49,9 @@ class PluginBuildResult:
     skipped: tuple[str, ...]
 
 
-def _published_projects(root: Path) -> tuple[tuple[str, ...], tuple[str, ...]]:
+def _published_projects(
+    root: Path, current_projects: tuple[str, ...]
+) -> tuple[tuple[str, ...], tuple[str, ...]]:
     preview_home = root / "previews"
     try:
         entries = sorted(preview_home.iterdir(), key=lambda entry: entry.name)
@@ -64,10 +67,15 @@ def _published_projects(root: Path) -> tuple[tuple[str, ...], tuple[str, ...]]:
         if not stat.S_ISDIR(metadata.st_mode) or stat.S_ISLNK(metadata.st_mode):
             raise PluginBuildError(f"published preview is not a real directory: {entry.name!r}")
         published.append(entry.name)
-    current = set(discover(root))
+    current = set(current_projects)
     projects = tuple(project for project in published if project in current)
     skipped = tuple(project for project in published if project not in current)
     return projects, skipped
+
+
+def _document_title(project: dict[str, Any]) -> str:
+    names = project["name"]
+    return names["ja"] if names["ja"] == names["en"] else f"{names['ja']} / {names['en']}"
 
 
 def _body(index: str, project: str) -> str:
@@ -79,12 +87,24 @@ def _body(index: str, project: str) -> str:
     body, after = remainder.split(closing, 1)
     if not before.lower().startswith("<!doctype html>") or after.strip().lower() != "</html>":
         raise PluginBuildError(f"previews/{project}/index.html is not one complete HTML document")
+
+    footer_open = '<footer class="evidence-ledger__links">'
+    footer_close = "</footer>"
+    if body.count(footer_open) != 1:
+        raise PluginBuildError(f"previews/{project}/index.html has an unsupported sidecar footer")
+    prefix, footer_and_suffix = body.split(footer_open, 1)
+    footer, suffix = footer_and_suffix.split(footer_close, 1)
+    for target in ('href="provenance.json"', 'href="gaps.md"'):
+        if footer.count(target) != 1:
+            raise PluginBuildError(
+                f"previews/{project}/index.html sidecar footer is missing {target}"
+            )
+    body = prefix + suffix
+    if 'href="provenance.json"' in body or 'href="gaps.md"' in body:
+        raise PluginBuildError(
+            f"previews/{project}/index.html has sidecar links outside its footer"
+        )
     return body
-
-
-def _document_title(project: dict[str, Any]) -> str:
-    names = project["name"]
-    return names["ja"] if names["ja"] == names["en"] else f"{names['ja']} / {names['en']}"
 
 
 def _script_json(value: object) -> str:
@@ -132,8 +152,10 @@ def _render_entry(root: Path, dashboards: dict[str, dict[str, str]]) -> bytes:
         "PREVIEW_RUNTIME": _inline_safe(preview_runtime, "</script", "preview runtime"),
         "PLUGIN_RUNTIME": _inline_safe(plugin_runtime, "</script", "plugin runtime"),
     }
-    for name, value in replacements.items():
-        shell = shell.replace("{{" + name + "}}", value)
+    marker_pattern = re.compile(
+        r"\{\{(" + "|".join(re.escape(name) for name in PLUGIN_PLACEHOLDERS) + r")\}\}"
+    )
+    shell = marker_pattern.sub(lambda match: replacements[match.group(1)], shell)
     return shell.encode("utf-8")
 
 
@@ -172,23 +194,24 @@ def build_plugin(root: Path) -> PluginBuildResult:
     """Validate current-source publishes and atomically emit one aggregate static plugin."""
     resolved_root = root.resolve(strict=True)
     lock = resolved_root / "previews" / ".locks" / ".plugin-build.lock"
+    output_home = resolved_root / "dist"
+    output = output_home / PLUGIN_DIRECTORY
+    stage = output_home / f".{PLUGIN_DIRECTORY}.partial"
+    backup = output_home / f".{PLUGIN_DIRECTORY}.previous"
     with ProjectLock(lock):
-        projects, skipped = _published_projects(resolved_root)
+        prepare_stage(stage, backup, output)
+        current = discover(resolved_root)
         with ExitStack() as project_locks:
-            for project in projects:
+            for project in current:
                 paths = ProjectPaths(root=resolved_root, project=project)
                 project_locks.enter_context(ProjectLock(paths.lock))
+            projects, skipped = _published_projects(resolved_root, current)
             dashboards = _validated_dashboards(resolved_root, projects)
             files = {
                 "in-progress.plugin.json": canonical_json(PLUGIN_MANIFEST),
                 "index.html": _render_entry(resolved_root, dashboards),
             }
 
-        output_home = resolved_root / "dist"
-        output = output_home / PLUGIN_DIRECTORY
-        stage = output_home / f".{PLUGIN_DIRECTORY}.partial"
-        backup = output_home / f".{PLUGIN_DIRECTORY}.previous"
-        prepare_stage(stage, backup, output)
         for name in sorted(PLUGIN_FILES):
             (stage / name).write_bytes(files[name])
         publish(stage, backup, output)

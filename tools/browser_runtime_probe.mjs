@@ -3,9 +3,13 @@
 
 "use strict";
 
-const [baseUrl, debugPortText] = process.argv.slice(2);
+import { writeFile } from "node:fs/promises";
+
+const [baseUrl, debugPortText, pluginProject, screenshotPrefix] = process.argv.slice(2);
 if (!baseUrl || !/^\d+$/.test(debugPortText || "")) {
-  throw new Error("usage: browser_runtime_probe.mjs BASE_URL DEBUG_PORT");
+  throw new Error(
+    "usage: browser_runtime_probe.mjs BASE_URL DEBUG_PORT [PLUGIN_PROJECT] [SCREENSHOT_PREFIX]"
+  );
 }
 if (typeof WebSocket !== "function") {
   throw new Error("browser runtime probe requires a Node.js release with global WebSocket");
@@ -126,8 +130,57 @@ async function waitFor(expression, label) {
   throw new Error("browser state timed out: " + label);
 }
 
+async function captureViewport(width, height, suffix, mobile) {
+  await session.send("Emulation.setDeviceMetricsOverride", {
+    width,
+    height,
+    deviceScaleFactor: 1,
+    mobile,
+  });
+  await delay(50);
+  const shot = await session.send("Page.captureScreenshot", {
+    format: "png",
+    fromSurface: true,
+    captureBeyondViewport: false,
+  });
+  assert(typeof shot.data === "string" && shot.data.length > 0, "empty browser screenshot");
+  await writeFile(screenshotPrefix + "-" + suffix + ".png", Buffer.from(shot.data, "base64"));
+}
+
 async function navigate(url, readyUrl = url) {
   await session.send("Page.navigate", { url });
+  if (pluginProject) {
+    const initial = JSON.stringify(new URL(url).href);
+    await waitFor(
+      "location.href === " + initial +
+        " && document.readyState === 'complete'" +
+        " && document.getElementById('preview-plugin-data') !== null",
+      "plugin shell " + url
+    );
+    const project = JSON.stringify(pluginProject);
+    await evaluate(`(() => {
+      const channel = new MessageChannel();
+      window.__previewProbePort = channel.port1;
+      window.postMessage({
+        type: 'in-progress:init',
+        nonce: 'preview-browser-probe',
+        context: {
+          apiVersion: '1.0',
+          capabilities: [],
+          project: { id: ${project}, name: ${project}, color: '#67d5b5', available: true },
+          theme: {
+            mode: 'dark',
+            tokens: {
+              background: '#0b0e14', surface: '#121722', surfaceRaised: '#18202c',
+              border: '#283142', text: '#e7ecf4', muted: '#909cb0', accent: '#67d5b5',
+              warning: '#f2b84b', danger: '#ff6b78',
+              uiFont: 'Atkinson Hyperlegible Next', monoFont: 'Iosevka'
+            }
+          }
+        }
+      }, '*', [channel.port2]);
+    })()`);
+  }
   const expected = JSON.stringify(new URL(readyUrl).href);
   await waitFor(
     "location.href === " + expected +
@@ -163,6 +216,30 @@ try {
   await session.send("Page.enable");
   await session.send("Runtime.enable");
   await navigate(baseUrl);
+
+  const shell = await evaluate(`(() => {
+    const tour = document.getElementById('preview-tour');
+    let steps = 0;
+    try { steps = JSON.parse(tour?.textContent || '{}').steps?.length || 0; } catch (_error) {}
+    return {
+      announcer: document.querySelectorAll('[data-preview-announcer]').length,
+      skipLink: document.querySelectorAll('a.skip-link[href="#preview-main"]').length,
+      tourLayer: document.querySelectorAll('[data-tour-layer]').length,
+      steps,
+      themeMode: document.documentElement.dataset.previewThemeMode || '',
+      page: getComputedStyle(document.documentElement).getPropertyValue('--page').trim()
+    };
+  })()`);
+  assert(shell.announcer === 1 && shell.skipLink === 1, "dashboard shell lacks a11y nodes");
+  assert(shell.tourLayer === 1 && shell.steps > 0, "dashboard shell lacks guided-tour state");
+  if (pluginProject) {
+    assert(shell.themeMode === "dark" && shell.page === "#0b0e14", "plugin ignored host theme");
+  }
+  if (screenshotPrefix) {
+    await captureViewport(1440, 1000, "desktop", false);
+    await captureViewport(390, 844, "mobile", true);
+    await session.send("Emulation.clearDeviceMetricsOverride");
+  }
 
   const claimKeys = await evaluate(
     "Array.from(document.querySelectorAll('[data-evidence-select]'), " +

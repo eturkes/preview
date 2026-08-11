@@ -8,7 +8,7 @@ from pathlib import Path
 
 from . import __version__
 from .discovery import discover, representable, require_project
-from .generation import dry_run, generate_batch, generate_project
+from .generation import compile_project, dry_run, generate_batch, generate_project
 from .paths import ProjectPaths, repo_root
 from .plugin import build_plugin
 from .publication import ProjectLock
@@ -40,6 +40,16 @@ def parser() -> argparse.ArgumentParser:
         "--dry-run",
         action="store_true",
         help="print the exact Codex invocation and prompt without spending tokens",
+    )
+    compile_command = subcommands.add_parser(
+        "compile",
+        help="validate and atomically recompile one published model without Codex",
+    )
+    compile_command.add_argument("name")
+    compile_command.add_argument(
+        "--model",
+        type=Path,
+        help="compile this regular JSON file instead of the published preview.json",
     )
     validate = subcommands.add_parser("validate", help="validate one published preview")
     validate.add_argument("name")
@@ -135,6 +145,11 @@ def main(argv: list[str] | None = None, *, root: Path | None = None) -> int:
                 code = 1
             print(text, end="")
             return code
+        if args.command == "compile":
+            outcome = compile_project(actual_root, args.name, args.model)
+            stream = sys.stdout if outcome.ok else sys.stderr
+            print(outcome.message, file=stream)
+            return int(not outcome.ok)
         if args.command == "validate":
             if not representable(args.name):
                 raise ValueError(f"invalid project name {args.name!r}")

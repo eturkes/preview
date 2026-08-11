@@ -1,0 +1,182 @@
+[
+  {
+    "claim": {
+      "en": "The deployment checklist requires pnpm check to pass on pinned dependencies before deployment.",
+      "ja": "導入チェックリストは、導入前に固定済み依存関係でpnpm checkが成功することを要求しています。"
+    },
+    "id": "deployment-checklist",
+    "quote": "`pnpm check` passes on pinned dependencies before deployment.",
+    "src": "docs/security.md:L222-L222",
+    "status": "verified"
+  },
+  {
+    "claim": {
+      "en": "in-progress is a local-first browser control plane whose configured projects receive browser-detached Bun PTY sessions and terminal/external views.",
+      "ja": "in-progressはローカル優先のブラウザー制御プレーンで、設定済みプロジェクトにブラウザー非依存のBun PTYセッションと端末・外部ビューを提供します。"
+    },
+    "id": "control-plane",
+    "quote": "Local-first browser control plane for coding agents. Each configured project gets browser-detached Bun PTY sessions; the top rail switches between the trusted terminal and external project views.",
+    "src": "README.md:L3-L3",
+    "status": "verified"
+  },
+  {
+    "claim": {
+      "en": "External views are local static bundles in opaque-origin sandboxed iframes connected through versioned MessageChannel RPC.",
+      "ja": "外部ビューは不透明オリジンのサンドボックスiframe内のローカル静的バンドルで、バージョン付きMessageChannel RPCに接続します。"
+    },
+    "id": "plugin-frame",
+    "quote": "External views: local static bundles in opaque-origin sandboxed iframes; versioned `MessageChannel` RPC",
+    "src": "README.md:L12-L12",
+    "status": "verified"
+  },
+  {
+    "claim": {
+      "en": "Application state uses an ignored local SQLite file, with no account, cloud database, or telemetry in the documented stack.",
+      "ja": "文書化された構成では、アプリ状態は無視対象のローカルSQLiteファイルを使い、アカウント、クラウドDB、テレメトリはありません。"
+    },
+    "id": "local-state",
+    "quote": "State: ignored `.data/in-progress.db`; no account, cloud database, or telemetry",
+    "src": "README.md:L13-L13",
+    "status": "verified"
+  },
+  {
+    "claim": {
+      "en": "Each project record supplies the trusted canonical working directory used for sanitized read-only Git queries, plugin reads, and new shells.",
+      "ja": "各プロジェクトレコードは無害化済み読み取り専用Git照会、プラグイン読み取り、新規シェルで使う信頼済み正規作業ディレクトリを提供します。"
+    },
+    "id": "project-root",
+    "quote": "Each project record supplies the trusted canonical working directory used for sanitized read-only Git queries, plugin reads, and new shells.",
+    "src": "docs/architecture.md:L63-L63",
+    "status": "verified"
+  },
+  {
+    "claim": {
+      "en": "Changing view or losing the browser does not kill a PTY, but sessions survive only while the in-progress process remains alive.",
+      "ja": "ビュー変更やブラウザー切断ではPTYは終了しませんが、セッションはin-progressプロセスが生存する間だけ継続します。"
+    },
+    "id": "session-lifetime",
+    "quote": "Changing project/view or losing the browser connection does **not** kill the PTY. Reattach receives the byte-ring snapshot, then live output. Sessions survive browser reload/network loss only while the in-progress process remains alive",
+    "src": "docs/architecture.md:L83-L83",
+    "status": "verified"
+  },
+  {
+    "claim": {
+      "en": "Multiple clients may observe a session, while the newest attachment owns input and resize until another claims the writer lease.",
+      "ja": "複数クライアントがセッションを閲覧でき、別の接続が書き込み権を取得するまでは最新接続が入力とリサイズを所有します。"
+    },
+    "id": "writer-lease",
+    "quote": "Multiple clients may observe one session. The newest attachment owns input/resize; another client sends `claim` to take the writer lease.",
+    "src": "docs/architecture.md:L85-L85",
+    "status": "verified"
+  },
+  {
+    "claim": {
+      "en": "Plugin entry documents require an existing browser session; declared module, style, font, and image assets stay unauthenticated for opaque-origin loading.",
+      "ja": "プラグインのエントリー文書には既存ブラウザーセッションが必要で、宣言済みのモジュール、スタイル、フォント、画像アセットは不透明オリジン読込用に未認証のままです。"
+    },
+    "id": "manifest-install",
+    "quote": "other read endpoints and plugin entry documents require and refresh an existing session. Declared plugin module/style/font/image assets remain unauthenticated because the opaque-origin frame cannot attach host credentials to their CORS loads.",
+    "src": "docs/architecture.md:L115-L115",
+    "status": "verified"
+  },
+  {
+    "claim": {
+      "en": "The initialization context exposes selected-project identity; path and Git metadata require the project.metadata capability.",
+      "ja": "初期化コンテキストは選択中プロジェクトの識別情報だけを公開し、パスとGitメタデータにはproject.metadata権限が必要です。"
+    },
+    "id": "project-port",
+    "quote": "The initialization context exposes only the identity needed to label the selected project. Path and Git metadata require `project.metadata`.",
+    "src": "docs/plugin-system.md:L152-L152",
+    "status": "verified"
+  },
+  {
+    "claim": {
+      "en": "Preview selects a validated packaged dashboard matching the active project ID and has no host authority.",
+      "ja": "PreviewはアクティブなプロジェクトIDに一致する検証済みパッケージダッシュボードを選び、ホスト権限を持ちません。"
+    },
+    "id": "preview-match",
+    "quote": "| Preview       | Selects a validated packaged dashboard matching the active project ID         | None                                   |",
+    "src": "README.md:L123-L123",
+    "status": "verified"
+  },
+  {
+    "claim": {
+      "en": "The documented ecosystem workflow builds sibling outputs and then starts the ecosystem development configuration.",
+      "ja": "文書化されたエコシステム手順は兄弟出力をビルドしてからエコシステム開発設定を起動します。"
+    },
+    "id": "ecosystem-command",
+    "quote": "pnpm ecosystem:build\npnpm dev:ecosystem",
+    "src": "README.md:L114-L115",
+    "status": "verified"
+  },
+  {
+    "claim": {
+      "en": "The documented static host ownership and manifest restrictions indicate that integration authority is centralized in the host.",
+      "ja": "文書化された静的なホスト所有とマニフェスト制約から、統合権限はホストに集中していると解釈できます。"
+    },
+    "id": "host-integrations",
+    "quote": "Integration configuration is also static and host-owned. Align gets one fixed read-only status\ninvocation; Drift gets one fixed validating render invocation; Tree Complete loads one built\nembedded service per selected project with host-fixed project/data roots and runner mode. Static\nplugin manifests grant access to those named methods but cannot configure code, argv, paths, or\nmode.",
+    "src": "docs/architecture.md:L65-L69",
+    "status": "inferred"
+  },
+  {
+    "claim": {
+      "en": "The ecosystem build compiles Drift, Preview, Tree Complete, and Turbo Prompt, then validates all five manifests with the host validator.",
+      "ja": "エコシステムビルドはDrift、Preview、Tree Complete、Turbo Promptをコンパイルし、ホスト検証器で5つすべてのマニフェストを検証します。"
+    },
+    "id": "ecosystem-build-validation",
+    "quote": "The build command compiles Drift, Preview, Tree Complete, and Turbo Prompt, then validates all five\nmanifests with the host validator.",
+    "src": "README.md:L127-L128",
+    "status": "verified"
+  },
+  {
+    "claim": {
+      "en": "The pnpm check script runs format checking, lint, type checks, tests, and the production build in sequence.",
+      "ja": "pnpm checkスクリプトは整形確認、lint、型検査、テスト、本番ビルドを順に実行します。"
+    },
+    "id": "quality-gate",
+    "quote": "\"check\": \"pnpm format:check && pnpm lint && pnpm typecheck && pnpm test && pnpm build\"",
+    "src": "package.json:L12-L12",
+    "status": "verified"
+  },
+  {
+    "claim": {
+      "en": "Static source evidence does not establish whether a configured host is currently running or its deployment checklist is complete.",
+      "ja": "静的ソース根拠では、設定済みホストが現在稼働中か、導入チェックリストが完了済みかを確認できません。"
+    },
+    "id": "runtime-deployment",
+    "quote": "",
+    "src": "",
+    "status": "gap"
+  },
+  {
+    "claim": {
+      "en": "Anyone who can send terminal input receives the workstation user's effective shell authority; in-progress is not a multi-user boundary or terminal sandbox.",
+      "ja": "端末入力を送れる者はワークステーション利用者の実効シェル権限を持ち、in-progressはマルチユーザー境界でも端末サンドボックスでもありません。"
+    },
+    "id": "terminal-authority",
+    "quote": "Anyone who can send terminal input has the workstation user’s effective shell authority, including access to that user’s repositories, credentials, agents, network, and tools. in-progress is not a multi-user tenancy boundary or a sandbox for commands launched in its terminal.",
+    "src": "docs/security.md:L14-L14",
+    "status": "verified"
+  },
+  {
+    "claim": {
+      "en": "The plugin sandbox protects host integrity but is not a confidentiality boundary for data returned through granted capabilities.",
+      "ja": "プラグインサンドボックスはホストの完全性を守りますが、付与権限で返されたデータの機密性境界ではありません。"
+    },
+    "id": "plugin-confidentiality",
+    "quote": "The sandbox protects host integrity and removes ambient browser authority, but it is not a confidentiality boundary for data returned through granted capabilities",
+    "src": "docs/security.md:L145-L145",
+    "status": "verified"
+  },
+  {
+    "claim": {
+      "en": "No valid Tree Complete fork request reaches the embedded service without trusted-host confirmation showing the configured mode and immutable IDs; rejection returns before contact.",
+      "ja": "有効なTree Completeフォーク要求は、設定モードと不変IDを示す信頼済みホスト確認なしに埋め込みサービスへ到達せず、拒否時は接続前にエラーを返します。"
+    },
+    "id": "fork-confirmation",
+    "quote": "trusted React host first validates the parameter object, then displays its own confirmation naming\nthe plugin/project display names plus stable IDs, configured mode, and escaped immutable fork IDs. Preview wording\ndiscloses host-state simulation; Codex wording discloses unsandboxed OS-user authority. Rejection or\ninvalid input returns an RPC error without contacting the embedded service",
+    "src": "docs/plugin-system.md:L377-L381",
+    "status": "verified"
+  }
+]

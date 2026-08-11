@@ -16,7 +16,7 @@ from preview_tool.schema import (
     loads_strict,
     validate_structure,
 )
-from preview_tool.validation import validate_bundle, validate_model
+from preview_tool.validation import BUNDLE_FILES, validate_bundle, validate_model
 
 
 def loc(text: str) -> dict[str, str]:
@@ -525,6 +525,11 @@ class ContractTests(unittest.TestCase):
                 for value in row[field].values():
                     self.assertIn(html.escape(value, quote=True), page)
 
+    def test_standalone_bundle_retains_raw_sidecar_links(self) -> None:
+        page = compiled_files(valid_data(), self.templates)["index.html"].decode("utf-8")
+        self.assertIn('<a href="provenance.json">provenance.json</a>', page)
+        self.assertIn('<a href="gaps.md">gaps.md</a>', page)
+
     def test_evidence_inspector_renders_empty_gap_ledger_state(self) -> None:
         page = compiled_files(valid_data(), self.templates)["index.html"].decode("utf-8")
         self.assertNotIn("data-gap-entry", page)
@@ -548,14 +553,19 @@ class ContractTests(unittest.TestCase):
         self.assertIn("bundle.entries", {finding.code for finding in report.findings})
         self.assertIn("bundle.entry-kind", {finding.code for finding in report.findings})
 
-    def test_tracked_canary_matches_canonical_compiler(self) -> None:
+    def test_tracked_bundles_match_canonical_compiler(self) -> None:
         repository = Path(__file__).resolve().parents[1]
-        bundle = repository / "previews" / "lean-cds"
-        data = loads_strict((bundle / "preview.json").read_bytes())
-        self.assertEqual(validate_structure(data, "lean-cds"), [])
-        for name, content in compiled_files(data, repository / "templates").items():
-            with self.subTest(name=name):
-                self.assertEqual((bundle / name).read_bytes(), content)
+        for project in ("in-progress", "lean-cds"):
+            with self.subTest(project=project):
+                bundle = repository / "previews" / project
+                raw = (bundle / "preview.json").read_bytes()
+                data = loads_strict(raw)
+                self.assertEqual({entry.name for entry in bundle.iterdir()}, BUNDLE_FILES)
+                self.assertEqual(raw, canonical_json(data))
+                self.assertEqual(validate_structure(data, project), [])
+                for name, content in compiled_files(data, repository / "templates").items():
+                    with self.subTest(project=project, name=name):
+                        self.assertEqual((bundle / name).read_bytes(), content)
 
     def test_tracked_browser_model_is_validator_clean(self) -> None:
         repository = Path(__file__).resolve().parents[1]

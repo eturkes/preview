@@ -3,6 +3,7 @@ from __future__ import annotations
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 from preview_tool.publication import (
     ProjectBusyError,
@@ -40,6 +41,29 @@ class PublicationTests(unittest.TestCase):
             stage.symlink_to(target, target_is_directory=True)
             with self.assertRaises(RuntimeError):
                 publish(stage, backup, live)
+
+    def test_post_promotion_cleanup_failure_is_successful_and_recoverable(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            stage, backup, live = self.paths(root)
+            stage.mkdir(parents=True)
+            backup.parent.mkdir(parents=True)
+            (stage / "new").write_text("new", encoding="utf-8")
+            live.mkdir()
+            (live / "old").write_text("old", encoding="utf-8")
+
+            with mock.patch(
+                "preview_tool.publication.remove_leaf",
+                side_effect=(None, OSError("injected cleanup failure")),
+            ):
+                publish(stage, backup, live)
+
+            self.assertEqual((live / "new").read_text(encoding="utf-8"), "new")
+            self.assertEqual((backup / "old").read_text(encoding="utf-8"), "old")
+            prepare_stage(stage, backup, live)
+            self.assertFalse(backup.exists())
+            self.assertTrue(stage.is_dir())
+            self.assertEqual((live / "new").read_text(encoding="utf-8"), "new")
 
     def test_project_lock_is_nonblocking(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:

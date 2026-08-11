@@ -86,7 +86,10 @@ def _finding(code: str, path: str, message: str) -> Finding:
 
 def read_bounded_regular(path: Path, maximum: int) -> bytes:
     """Read at most one byte beyond a limit without following the final path."""
-    descriptor = os.open(path, os.O_RDONLY | os.O_CLOEXEC | os.O_NOFOLLOW)
+    descriptor = os.open(
+        path,
+        os.O_RDONLY | os.O_CLOEXEC | os.O_NOFOLLOW | os.O_NONBLOCK,
+    )
     try:
         metadata = os.fstat(descriptor)
         if not stat.S_ISREG(metadata.st_mode):

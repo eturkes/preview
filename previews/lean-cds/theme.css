@@ -4,6 +4,10 @@
   --accent-strong: #343c83;
   --accent-soft: #e9eafb;
   --accent-ink: #ffffff;
+  --preview-dark-accent: #aeb5ff;
+  --preview-dark-accent-strong: #d0d4ff;
+  --preview-dark-accent-soft: #292d58;
+  --preview-dark-accent-ink: #17182d;
 }
 
 .theme-ember {
@@ -11,6 +15,10 @@
   --accent-strong: #7d301f;
   --accent-soft: #f8e8e2;
   --accent-ink: #ffffff;
+  --preview-dark-accent: #f3a58e;
+  --preview-dark-accent-strong: #ffc3b2;
+  --preview-dark-accent-soft: #4a281f;
+  --preview-dark-accent-ink: #28130d;
 }
 
 .theme-forest {
@@ -18,6 +26,10 @@
   --accent-strong: #245140;
   --accent-soft: #e1eee8;
   --accent-ink: #ffffff;
+  --preview-dark-accent: #8ed2b7;
+  --preview-dark-accent-strong: #b5e8d3;
+  --preview-dark-accent-soft: #1c3b30;
+  --preview-dark-accent-ink: #10271f;
 }
 
 .theme-plum {
@@ -25,6 +37,10 @@
   --accent-strong: #593257;
   --accent-soft: #f2e6f1;
   --accent-ink: #ffffff;
+  --preview-dark-accent: #d7a5d4;
+  --preview-dark-accent-strong: #efc8ed;
+  --preview-dark-accent-soft: #442a43;
+  --preview-dark-accent-ink: #281727;
 }
 
 .theme-graphite {
@@ -32,6 +48,10 @@
   --accent-strong: #334554;
   --accent-soft: #e5eaee;
   --accent-ink: #ffffff;
+  --preview-dark-accent: #a9bed0;
+  --preview-dark-accent-strong: #d0dce6;
+  --preview-dark-accent-soft: #293743;
+  --preview-dark-accent-ink: #101820;
 }
 
 .font-humanist {
@@ -55,34 +75,17 @@
 }
 
 @media (prefers-color-scheme: dark) {
-  .theme-indigo {
-    --accent: #aeb5ff;
-    --accent-strong: #d0d4ff;
-    --accent-soft: #292d58;
-    --accent-ink: #17182d;
+  :root:not([data-preview-theme-mode]) {
+    --accent: var(--preview-dark-accent);
+    --accent-strong: var(--preview-dark-accent-strong);
+    --accent-soft: var(--preview-dark-accent-soft);
+    --accent-ink: var(--preview-dark-accent-ink);
   }
-  .theme-ember {
-    --accent: #f3a58e;
-    --accent-strong: #ffc3b2;
-    --accent-soft: #4a281f;
-    --accent-ink: #28130d;
-  }
-  .theme-forest {
-    --accent: #8ed2b7;
-    --accent-strong: #b5e8d3;
-    --accent-soft: #1c3b30;
-    --accent-ink: #10271f;
-  }
-  .theme-plum {
-    --accent: #d7a5d4;
-    --accent-strong: #efc8ed;
-    --accent-soft: #442a43;
-    --accent-ink: #281727;
-  }
-  .theme-graphite {
-    --accent: #a9bed0;
-    --accent-strong: #d0dce6;
-    --accent-soft: #293743;
-    --accent-ink: #101820;
-  }
+}
+
+:root[data-preview-theme-mode="dark"] {
+  --accent: var(--preview-dark-accent);
+  --accent-strong: var(--preview-dark-accent-strong);
+  --accent-soft: var(--preview-dark-accent-soft);
+  --accent-ink: var(--preview-dark-accent-ink);
 }

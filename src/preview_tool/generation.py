@@ -5,6 +5,7 @@ from __future__ import annotations
 import os
 import shlex
 import signal
+import stat
 import subprocess
 import threading
 from contextlib import suppress
@@ -235,6 +236,63 @@ def _write_compiled(plan: GenerationPlan, raw: bytes) -> Report:
         artifact_home=plan.paths.preview_home,
         template_dir=plan.paths.templates,
     )
+
+
+def compile_project(
+    root: Path, project: str, model_path: Path | None = None
+) -> GenerationOutcome:
+    """Recompile one published declarative model without invoking Codex."""
+    plan = plan_generation(root, project)
+    with ProjectLock(plan.paths.lock):
+        prepare_stage(plan.paths.stage, plan.paths.backup, plan.paths.live)
+        try:
+            live_metadata = plan.paths.live.lstat()
+        except FileNotFoundError:
+            live_metadata = None
+        if live_metadata is not None and (
+            stat.S_ISLNK(live_metadata.st_mode) or not stat.S_ISDIR(live_metadata.st_mode)
+        ):
+            raise ValueError(f"published preview is not a real directory: {project!r}")
+        if model_path is None:
+            if live_metadata is None:
+                raise ValueError(f"no published preview for {project!r}")
+            input_path = plan.paths.live / "preview.json"
+        else:
+            unresolved_input = model_path.expanduser().absolute()
+            try:
+                input_path = unresolved_input.parent.resolve(strict=True) / unresolved_input.name
+            except OSError as error:
+                directory = unresolved_input.parent
+                raise ValueError(f"cannot resolve model directory: {directory}") from error
+            try:
+                input_path.relative_to(plan.paths.preview_home)
+            except ValueError:
+                pass
+            else:
+                raise ValueError("--model must be outside the reserved previews directory")
+        try:
+            raw = read_bounded_regular(input_path, MAX_JSON_BYTES)
+        except FileNotFoundError as error:
+            raise ValueError(f"model file does not exist: {input_path}") from error
+        except (OSError, ValueError) as error:
+            raise ValueError(f"cannot read model safely: {escape_controls(error)}") from error
+        try:
+            report = _write_compiled(plan, raw)
+        except (OSError, TypeError, ValueError) as error:
+            detail = escape_controls(error)
+            raise ValueError(f"published model could not be compiled: {detail}") from error
+        if not report.ok:
+            return GenerationOutcome(
+                project,
+                False,
+                f"no live bundle replaced for {project}\n{_format_report(report)}",
+            )
+        publish(plan.paths.stage, plan.paths.backup, plan.paths.live)
+        advisory = _format_report(report)
+        message = f"compiled previews/{project}"
+        if advisory:
+            message += f"\n{advisory}"
+        return GenerationOutcome(project, True, message)
 
 
 def generate_project(root: Path, project: str) -> GenerationOutcome:

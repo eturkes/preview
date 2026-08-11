@@ -20,8 +20,8 @@ named generation may target any current sibling without enabling it first.
 
 The trust boundary is deliberate:
 
-1. Codex inspects one source checkout and returns an untrusted, strict JSON
-   model: project copy, views, components, tour, provenance, and gaps.
+1. Codex or a deliberate direct review supplies an untrusted, strict JSON model:
+   project copy, views, components, tour, provenance, and gaps.
 2. Stdlib Python validates and canonicalizes that model, verifies its evidence
    references, and compiles it with repository-owned templates.
 3. Only a validator-clean stage replaces the published bundle.
@@ -107,6 +107,8 @@ preview generate lean-cds            # one current sibling
 preview generate --dry-run           # plans for the enabled set; no Codex
 preview generate                     # enabled set, sequentially
 
+preview compile lean-cds              # recompile the published model; no Codex
+preview compile lean-cds --model /path/to/preview.json  # validate + atomically publish a model
 preview validate lean-cds
 preview serve lean-cds --port 4173
 preview serve lean-cds --port 0      # kernel-selected loopback port
@@ -115,10 +117,18 @@ preview plugin-build                 # dist/in-progress-plugin
 ```
 
 This repository tracks [`previews/lean-cds/`](previews/lean-cds/) as a generated
-compiler canary and concrete example of the output contract. Recompile its
-derived files from the existing `preview.json` whenever the compiler or trusted
-templates change. Reauthor `preview.json` only when an authenticated Codex run
-and evidence review are intentional.
+compiler canary and [`previews/in-progress/`](previews/in-progress/) as the
+source-cited dashboard selected by the in-progress plugin for project ID
+`in-progress`. Run `preview compile NAME` after the compiler, trusted templates,
+or other deterministic renderer inputs change. For any model edit, keep the
+candidate outside the reserved `previews/` tree and run
+`preview compile NAME --model FILE`. The command accepts one bounded regular
+non-symlink JSON file, validates its
+schema and current-source citations, compiles an empty stage, validates the
+closed bundle, and atomically publishes it without invoking Codex. A failure
+before promotion preserves the prior live bundle. Backup-cleanup failure after
+promotion leaves recoverable `.previous` residue and still reports success; the
+next locked operation removes that residue.
 
 | Command | Effect |
 | --- | --- |
@@ -128,6 +138,7 @@ and evidence review are intentional.
 | `disable NAME` | Disable a current or stale enabled name. |
 | `toggle NAME` | Flip a current sibling, or clear a stale enabled name. |
 | `generate [NAME] [--dry-run]` | Generate one project or the enabled set. |
+| `compile NAME [--model FILE]` | Validate, compile, and atomically publish a declarative model without Codex. |
 | `validate NAME` | Revalidate one published bundle against its current sibling. |
 | `serve NAME [--port N] [--open]` | Validate, then serve one bundle on loopback. |
 | `plugin-build` | Validate current-source publishes and build one static in-progress plugin. |
@@ -138,8 +149,10 @@ and evidence review are intentional.
 has a current sibling source against that source and the trusted templates,
 then atomically replaces `dist/in-progress-plugin/`. Stale publishes without a
 current sibling are excluded with a warning; any included validation failure
-preserves the prior plugin. The output has two files: a strict
-`in-progress.plugin.json` manifest and one self-contained `index.html`; it
+preserves the prior plugin. The aggregate build locks every current sibling
+before discovering publishes, so a concurrent generation/compile rename gap
+fails closed instead of silently omitting a dashboard. The output has two
+files: a strict `in-progress.plugin.json` manifest and one self-contained `index.html`; it
 performs no Codex call and requests no host capabilities.
 
 Configure that output directory in in-progress and restart its host. The plugin
@@ -149,6 +162,13 @@ dashboard. A selected project without a packaged publish gets a visible
 bilingual unavailable state. All trusted CSS and JavaScript are inline so the
 dashboard works in in-progress's opaque-origin iframe without weakening the
 canonical bundle CSP or file contract.
+
+The plugin consumes the validated host `theme.mode` and a narrow allowlist of
+hex color and plain font-name tokens. Explicit host light/dark mode overrides
+only the packaged frame; standalone bundles retain their OS
+`prefers-color-scheme` behavior. The aggregate omits standalone links to raw
+`provenance.json` and `gaps.md` sidecars because those files are not packaged or
+public; the complete evidence inspector and gap ledger remain in the entry.
 
 The plugin is a derived aggregate snapshot. Re-run `plugin-build` after any
 publish changes. Canonical `previews/<project>/` directories remain unchanged
@@ -211,9 +231,10 @@ participating generation, validation, and serving processes; a subsequent attemp
 recovers an interrupted transition. Uncoordinated filesystem readers can observe
 the brief rename gap, and the lock is not confinement against hostile actors.
 
-`serve` holds that project lock for the review server's lifetime, so a concurrent
-generation of the same project fails closed instead of mixing files from two
-bundle generations. Stop the server before regenerating that project.
+`serve` holds that project lock for the review server's lifetime, so concurrent
+generation or compilation of the same project fails closed instead of mixing
+files from two bundle generations. Stop the server before republishing that
+project.
 
 Every nonempty claim reference - project status, code excerpt, or factual item -
 must have exactly one used provenance row. `verified` and `inferred` rows cite a

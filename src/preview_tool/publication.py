@@ -82,7 +82,7 @@ def prepare_stage(stage: Path, backup: Path, live: Path) -> None:
 
 
 def publish(stage: Path, backup: Path, live: Path) -> None:
-    """Replace live with stage, restoring live if promotion raises."""
+    """Replace live with stage; leave recoverable backup residue on cleanup failure."""
     if not stage.is_dir() or stage.is_symlink():
         raise RuntimeError(f"publication stage is not a real directory: {stage}")
     remove_leaf(backup)
@@ -96,4 +96,9 @@ def publish(stage: Path, backup: Path, live: Path) -> None:
         if moved_live and not live.exists() and backup.exists():
             os.replace(backup, live)
         raise
-    remove_leaf(backup)
+    try:
+        remove_leaf(backup)
+    except OSError:
+        # Promotion already succeeded. prepare_stage() removes this stale backup
+        # under the same project lock before the next publication attempt.
+        pass
