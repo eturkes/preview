@@ -96,7 +96,7 @@
     },
     "id": "preview-match",
     "quote": "| Preview       | Selects a validated packaged dashboard matching the active project ID         | None                                   |",
-    "src": "README.md:L123-L123",
+    "src": "README.md:L128-L128",
     "status": "verified"
   },
   {
@@ -106,7 +106,7 @@
     },
     "id": "ecosystem-command",
     "quote": "pnpm ecosystem:build\npnpm dev:ecosystem",
-    "src": "README.md:L114-L115",
+    "src": "README.md:L119-L120",
     "status": "verified"
   },
   {
@@ -126,7 +126,7 @@
     },
     "id": "ecosystem-build-validation",
     "quote": "The build command compiles Drift, Preview, Tree Complete, and Turbo Prompt, then validates all five\nmanifests with the host validator.",
-    "src": "README.md:L127-L128",
+    "src": "README.md:L132-L133",
     "status": "verified"
   },
   {
