@@ -10,6 +10,7 @@ from preview_tool.publication import (
     ProjectLock,
     prepare_stage,
     publish,
+    require_atomic_exchange_support,
 )
 
 
@@ -41,6 +42,41 @@ class PublicationTests(unittest.TestCase):
             stage.symlink_to(target, target_is_directory=True)
             with self.assertRaises(RuntimeError):
                 publish(stage, backup, live)
+
+    def test_update_uses_atomic_directory_exchange(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            stage, backup, live = self.paths(root)
+            stage.mkdir(parents=True)
+            live.mkdir()
+            (stage / "new").write_text("new", encoding="utf-8")
+            (live / "old").write_text("old", encoding="utf-8")
+            from preview_tool import publication
+
+            exchange = publication._rename_exchange
+
+            def observed_exchange(left: Path, right: Path) -> None:
+                self.assertTrue(right.is_dir())
+                exchange(left, right)
+                self.assertTrue(right.is_dir())
+
+            with mock.patch(
+                "preview_tool.publication._rename_exchange",
+                side_effect=observed_exchange,
+            ) as called:
+                publish(stage, backup, live)
+
+            called.assert_called_once_with(stage, live)
+            self.assertEqual((live / "new").read_text(encoding="utf-8"), "new")
+            self.assertFalse((live / "old").exists())
+
+    def test_atomic_exchange_support_probe_exercises_and_cleans_output_filesystem(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            output = Path(temporary) / "artifacts"
+
+            require_atomic_exchange_support(output)
+
+            self.assertEqual(tuple(output.iterdir()), ())
 
     def test_post_promotion_cleanup_failure_is_successful_and_recoverable(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:

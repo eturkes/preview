@@ -3,7 +3,8 @@
 `preview` turns projects beside this checkout into work-in-progress, interactive
 Japanese/English dashboard UIs with guided tours. It explains a project through
 a concrete example while showing its evidence-backed present state. The
-checkout is both the program home and the long-lived preview home.
+checkout owns the tool and trusted templates. Generated state can stay in the
+checkout for compatibility or move to an explicit host-owned artifact root.
 
 ```text
 ~/Projects/
@@ -51,10 +52,12 @@ does not call the source project or pretend to be a live backend.
 ## Requirements and install
 
 Runtime: Linux, Python 3.11+, GNU `timeout`, and an authenticated
-[`codex`](https://github.com/openai/codex) CLI. Serving needs no Python package
-dependencies. Development additionally uses `just`, Node.js 20.10+, ShellCheck,
-Git, and curl; the optional browser probe uses ChromiumFish plus GNU `timeout`,
-and its interaction run enables Node's built-in `WebSocket` client.
+[`codex`](https://github.com/openai/codex) CLI logged in through ChatGPT. The
+artifact filesystem must support Linux `renameat2` directory exchange.
+Serving needs no Python package dependencies. Development additionally uses
+`just`, Node.js 20.10+, ShellCheck, Git, and curl; the optional browser probe
+uses ChromiumFish plus GNU `timeout`, and its interaction run enables Node's
+built-in `WebSocket` client.
 
 ```sh
 just install
@@ -74,24 +77,31 @@ foreign symlink. Keep the checkout at its installed path. With no `just`, run
 > `generate` spends Codex tokens. Each project gets at most two 30-minute Codex
 > attempts: invalid output or a failed Codex process triggers one complete
 > retry with repair feedback. A batch can therefore spend two invocations per
-> enabled project. No model or reasoning effort is pinned; active Codex
-> configuration controls quality, cost, and latency. Inspect the exact command
-> and complete stdin prompt with `--dry-run` first.
+> enabled project. Generation pins `gpt-5.6-sol`, `max` reasoning, and ChatGPT
+> subscription auth. Inspect the exact command and complete stdin prompt with
+> `--dry-run` first.
 
 ### First success
 
-From this checkout, with a direct sibling source project named `PROJECT`:
+From this checkout, with a direct sibling source project named `PROJECT`, choose
+a generated-state directory outside that source checkout:
 
 ```sh
+ARTIFACT_ROOT="$HOME/.local/share/in-progress/preview"
 preview list
-preview generate --dry-run PROJECT  # review the exact command and prompt
-preview generate PROJECT
-preview serve PROJECT --open        # validate, then open the loopback review UI
-preview plugin-build                # validate current publishes, then build one in-progress plugin
+preview generate --artifact-root "$ARTIFACT_ROOT" --dry-run PROJECT
+preview generate --artifact-root "$ARTIFACT_ROOT" PROJECT
+preview serve --artifact-root "$ARTIFACT_ROOT" PROJECT --open
+preview plugin-build --artifact-root "$ARTIFACT_ROOT"
 ```
 
 Generation prints the host-read and disclosure warning before spending tokens.
 Stop the review server before regenerating the same project.
+Omitting `--artifact-root` preserves the checkout-local legacy layout used by
+the tracked compiler canaries. An explicit root stores stages, publishes, and
+locks under `ARTIFACT_ROOT/previews/`, and the aggregate plugin under
+`ARTIFACT_ROOT/in-progress-plugin/`. Tool code and templates remain in this
+checkout. The generated preview home must not overlap the source checkout.
 
 ### Command reference
 
@@ -104,6 +114,7 @@ preview toggle lean-cds
 
 preview generate --dry-run lean-cds  # exact named plan; no Codex
 preview generate lean-cds            # one current sibling
+preview generate lean-cds --artifact-root /host/state --codex-executable /usr/bin/codex
 preview generate --dry-run           # plans for the enabled set; no Codex
 preview generate                     # enabled set, sequentially
 
@@ -137,25 +148,28 @@ next locked operation removes that residue.
 | `enable NAME` | Enable a current sibling. |
 | `disable NAME` | Disable a current or stale enabled name. |
 | `toggle NAME` | Flip a current sibling, or clear a stale enabled name. |
-| `generate [NAME] [--source PATH] [--dry-run]` | Generate one project or the enabled set. Explicit source requires `NAME` and supports non-sibling checkouts. |
-| `compile NAME [--model FILE] [--source PATH]` | Validate, compile, and atomically publish a declarative model without Codex. Explicit source supports non-sibling checkouts. |
-| `validate NAME [--source PATH]` | Revalidate one published bundle against its current or explicit source. |
-| `serve NAME [--source PATH] [--port N] [--open]` | Validate, then serve one bundle on loopback. |
-| `plugin-build [--source NAME PATH]...` | Validate current-source publishes and build one static in-progress plugin. Explicit mappings support non-sibling checkouts. |
+| `generate [NAME] [--source PATH] [--artifact-root PATH] [--codex-executable PATH] [--dry-run]` | Generate one project or the enabled set. Explicit source requires `NAME`; artifact state stays under the optional external root. |
+| `compile NAME [--model FILE] [--source PATH] [--artifact-root PATH]` | Validate, compile, and atomically publish a declarative model without Codex. |
+| `validate NAME [--source PATH] [--artifact-root PATH]` | Revalidate one published bundle against its current or explicit source. |
+| `serve NAME [--source PATH] [--artifact-root PATH] [--port N] [--open]` | Validate, then serve one bundle on loopback. |
+| `plugin-build [--source NAME PATH]... [--artifact-root PATH]` | Validate current-source publishes and build one static in-progress plugin. |
 
 ### in-progress plugin
 
 `preview plugin-build` validates every non-hidden published bundle that still
 has a current source against that source and the trusted templates, then
-atomically replaces `dist/in-progress-plugin/`. With no `--source`, current
-sources are direct siblings. One or more explicit `--source NAME PATH` mappings
+atomically replaces `dist/in-progress-plugin/`, or
+`ARTIFACT_ROOT/in-progress-plugin/` when the external root is given. With no
+`--source`, current sources are direct siblings. One or more explicit
+`--source NAME PATH` mappings
 replace sibling discovery for nested/submodule layouts. Stale publishes without
 a mapped/current source are excluded with a warning; any included validation
 failure preserves the prior plugin. The aggregate build locks every current
 project before discovering publishes, so a concurrent generation/compile rename
-gap fails closed instead of silently omitting a dashboard. The output has two
-files: a strict `in-progress.plugin.json` manifest and one self-contained `index.html`; it
-performs no Codex call and requests no host capabilities.
+gap fails closed instead of silently omitting a dashboard. The output has a
+strict `in-progress.plugin.json` manifest, one self-contained `index.html`, and
+the private `preview-index.json` inventory. It performs no Codex call and
+requests no host capabilities.
 
 Configure that output directory in in-progress and restart its host. The plugin
 accepts the API 1.0 `MessageChannel` handshake, matches the selected in-progress
@@ -188,10 +202,24 @@ authoring contract plus runtime assignment on stdin. The effective invocation
 is:
 
 ```text
-timeout --kill-after=30 1800 codex exec \
+timeout --kill-after=30 1800 /absolute/path/to/codex exec \
+  --ignore-user-config \
+  --model gpt-5.6-sol \
+  -c 'model_reasoning_effort="max"' \
+  -c 'forced_login_method="chatgpt"' \
+  -c 'model_provider="openai"' \
+  -c 'openai_base_url="https://chatgpt.com/backend-api/codex"' \
+  -c 'projects."<canonical-source>".trust_level="untrusted"' \
+  -c 'project_doc_max_bytes=0' \
+  -c 'mcp_servers={}' \
+  -c 'skills.include_instructions=false' \
+  -c 'features.hooks=false' \
+  -c 'features.plugins=false' \
+  -c 'features.browser_use=false' \
+  -c 'web_search="disabled"' \
   --sandbox read-only --ephemeral --skip-git-repo-check \
   --output-schema <preview>/templates/author-output.schema.json \
-  --output-last-message <preview>/previews/.partial/NAME/preview.json \
+  --output-last-message <artifact-home>/previews/.partial/NAME/preview.json \
   --color never -C <sibling-source> -
 ```
 
@@ -199,13 +227,54 @@ timeout --kill-after=30 1800 codex exec \
 `--ephemeral` avoids retaining a Codex session; the output schema constrains the
 last message; and the host Codex CLI writes that last message into the harness's
 stage. The prompt also directs read-only inspection and filesystem silence.
+`--ignore-user-config` plus explicit provider/base overrides prevent local
+configuration from rerouting the paid request away from OpenAI's ChatGPT Codex
+backend. A highest-precedence TOML-quoted canonical-source override marks the
+target project `untrusted`, so project `.codex/` configuration, hooks, and rules
+are skipped. A zero project-document budget prevents repository `AGENTS.md`
+content from becoming instructions; `skills.include_instructions=false` suppresses
+repository `.agents/skills`; and the explicit empty MCP map removes user-level MCP
+servers. Codex still injects the user-owned global `~/.codex/AGENTS.md`, which this
+harness treats as trusted user authority. The harness also disables hooks, apps, plugins, remote plugins,
+browser/computer/image tools, multi-agent/goals, skill discovery/install,
+MCP elicitation, tool suggestion, workspace dependencies, and web search. The
+read-only shell tool remains available for source inspection. The listed `-c`
+boundary overrides apply to both preflight and inference; inference additionally
+uses `--ignore-user-config`. The abbreviated command above shows representative
+feature disables; `--dry-run` prints every exact override.
+The default executable is resolved once from `PATH` for each plan;
+`--codex-executable PATH` selects an exact executable for generation and dry
+runs.
 
-This is a write boundary, **not a source-only read boundary**. Codex and its tool
+Before either paid attempt, the harness removes `OPENAI_API_KEY`,
+`CODEX_API_KEY`, and `CODEX_ACCESS_TOKEN` from the child environment, checks
+`codex login status`, and requires Codex Doctor to report working ChatGPT
+credentials, ChatGPT provider reachability, and a successful `openai` WebSocket
+handshake to `wss://chatgpt.com/backend-api/codex...`. The same sanitized
+environment, auth, provider, and base URL overrides apply to the paid process.
+A failed preflight aborts before model inference.
+
+Generation also performs and cleans a real directory-exchange probe on each output
+filesystem before preflight or inference. Unsupported filesystems therefore fail
+before subscription usage.
+
+The checkout launcher runs Python with `-B`, so Preview operations do not create
+bytecode caches in the tool checkout. On `SIGTERM`, the real CLI entry point
+raises a cancellation outside command dispatch, unwinds locks and generation,
+terminates the isolated Codex process group, escalates to `SIGKILL` after a
+bounded drain grace, and exits 143. Supervisors should send `SIGTERM`, allow at
+least six seconds for cleanup, then enforce their own `SIGKILL` deadline. This
+contains the spawned process group, not a subprocess that deliberately escapes
+into a new session; trusted-source review remains required.
+
+This is a write boundary, **not a source-only read boundary**. Codex and its shell
 calls can read any host-readable path, and content can reach the model provider
-before final-output validation. The secret scan cannot undo such upstream
-disclosure. Generate only from a trusted checkout, treat repository instructions
-as a prompt-injection surface, and review host privacy/authorization first. The
-CLI repeats this warning before every token-spending batch or named generation.
+before final-output validation. The untrusted-project/feature boundary suppresses
+target-controlled Codex extensions; it does not confine shell reads. The secret
+scan cannot undo such upstream disclosure. Generate only from a trusted checkout,
+treat repository instructions as a prompt-injection surface, and review host
+privacy/authorization first. The CLI repeats this warning before every
+token-spending batch or named generation.
 
 ## State, publication, and evidence
 
@@ -225,13 +294,22 @@ previews/.locks/<project>.lock         ignored advisory project lock
 dist/in-progress-plugin/               ignored derived aggregate plugin
   in-progress.plugin.json
   index.html
+  preview-index.json                    private sorted project inventory
 ```
 
-Publication promotes complete directories with a live-to-backup, stage-to-live
-rename sequence and rollback. A per-project nonblocking advisory lock coordinates
-participating generation, validation, and serving processes; a subsequent attempt
-recovers an interrupted transition. Uncoordinated filesystem readers can observe
-the brief rename gap, and the lock is not confinement against hostile actors.
+With `--artifact-root /host/state`, replace checkout-local `previews/` above
+with `/host/state/previews/`; the aggregate files live directly in
+`/host/state/in-progress-plugin/`. `preview-index.json` is canonical JSON with
+`schemaVersion: 1` and the sorted packaged project slugs. It is host-private and
+is not declared as a plugin asset/capability.
+
+First publication promotes one complete staged directory with `rename`. Updates
+use Linux `renameat2(RENAME_EXCHANGE)` so readers always resolve either the old or
+new complete directory. The displaced old directory moves to a backup and is
+removed; any stage/backup residue is recovered on the next locked run. A
+per-project nonblocking advisory lock coordinates participating generation,
+validation, and serving processes; the lock is not confinement against hostile
+actors.
 
 `serve` holds that project lock for the review server's lifetime, so concurrent
 generation or compilation of the same project fails closed instead of mixing

@@ -2,10 +2,12 @@
 
 from __future__ import annotations
 
+import ctypes
 import fcntl
 import os
 import shutil
 import stat
+import tempfile
 from pathlib import Path
 from types import TracebackType
 from typing import TextIO
@@ -13,6 +15,60 @@ from typing import TextIO
 
 class ProjectBusyError(RuntimeError):
     pass
+
+
+_AT_FDCWD = -100
+_RENAME_EXCHANGE = 2
+
+
+def _rename_exchange(left: Path, right: Path) -> None:
+    """Atomically exchange two Linux directory entries without a missing-live gap."""
+    try:
+        renameat2 = ctypes.CDLL(None, use_errno=True).renameat2
+    except AttributeError as error:
+        raise RuntimeError("atomic directory exchange requires Linux renameat2") from error
+    renameat2.argtypes = (
+        ctypes.c_int,
+        ctypes.c_char_p,
+        ctypes.c_int,
+        ctypes.c_char_p,
+        ctypes.c_uint,
+    )
+    renameat2.restype = ctypes.c_int
+    if renameat2(
+        _AT_FDCWD,
+        os.fsencode(left),
+        _AT_FDCWD,
+        os.fsencode(right),
+        _RENAME_EXCHANGE,
+    ):
+        error_number = ctypes.get_errno()
+        raise OSError(
+            error_number,
+            f"atomic directory exchange failed: {os.strerror(error_number)}",
+            left,
+            right,
+        )
+
+
+def require_atomic_exchange_support(directory: Path) -> None:
+    """Fail before paid work unless this output filesystem supports gap-free updates."""
+    _ensure_real_directory(directory)
+    probe = Path(tempfile.mkdtemp(prefix=".preview-exchange-probe-", dir=directory))
+    try:
+        left = probe / "left"
+        right = probe / "right"
+        left.mkdir()
+        right.mkdir()
+        (left / "marker").write_text("left", encoding="utf-8")
+        (right / "marker").write_text("right", encoding="utf-8")
+        _rename_exchange(left, right)
+        if (left / "marker").read_text(encoding="utf-8") != "right" or (
+            right / "marker"
+        ).read_text(encoding="utf-8") != "left":
+            raise RuntimeError("atomic directory exchange did not exchange output entries")
+    finally:
+        remove_leaf(probe)
 
 
 def _ensure_real_directory(path: Path) -> None:
@@ -86,16 +142,16 @@ def publish(stage: Path, backup: Path, live: Path) -> None:
     if not stage.is_dir() or stage.is_symlink():
         raise RuntimeError(f"publication stage is not a real directory: {stage}")
     remove_leaf(backup)
-    moved_live = False
-    try:
-        if live.exists() or live.is_symlink():
-            os.replace(live, backup)
-            moved_live = True
+    if not (live.exists() or live.is_symlink()):
         os.replace(stage, live)
-    except BaseException:
-        if moved_live and not live.exists() and backup.exists():
-            os.replace(backup, live)
-        raise
+        return
+    _rename_exchange(stage, live)
+    try:
+        os.replace(stage, backup)
+    except OSError:
+        # Promotion already succeeded. prepare_stage() removes the old live
+        # directory still occupying stage before the next publication.
+        return
     try:
         remove_leaf(backup)
     except OSError:

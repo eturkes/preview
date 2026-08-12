@@ -11,11 +11,43 @@ def repo_root() -> Path:
     return Path(__file__).resolve().parents[2]
 
 
+def resolve_artifact_root(value: Path | None) -> Path | None:
+    """Resolve an optional host-owned artifact root without requiring it to exist."""
+    if value is None:
+        return None
+    expanded = value.expanduser().absolute()
+    resolved = expanded.resolve(strict=False)
+    existing = expanded
+    while not existing.exists():
+        if existing.is_symlink():
+            raise ValueError(f"artifact root crosses an unresolved symlink: {existing}")
+        if existing.parent == existing:
+            raise ValueError(f"cannot resolve artifact root: {expanded}")
+        existing = existing.parent
+    if resolved.exists() and not resolved.is_dir():
+        raise ValueError(f"artifact root is not a directory: {resolved}")
+    return resolved
+
+
+def require_artifact_separation(artifact_root: Path, source: Path) -> None:
+    """Reject generated/source directory overlap in either direction."""
+    resolved_artifacts = artifact_root.resolve(strict=False)
+    resolved_source = source.resolve(strict=True)
+    if resolved_artifacts.is_relative_to(resolved_source) or resolved_source.is_relative_to(
+        resolved_artifacts
+    ):
+        raise ValueError(
+            "artifact root must be outside the source; "
+            f"artifact root {resolved_artifacts} overlaps {resolved_source}"
+        )
+
+
 @dataclass(frozen=True)
 class ProjectPaths:
     root: Path
     project: str
     source_override: Path | None = None
+    artifact_root: Path | None = None
 
     @property
     def source(self) -> Path:
@@ -23,7 +55,7 @@ class ProjectPaths:
 
     @property
     def preview_home(self) -> Path:
-        return self.root / "previews"
+        return (self.artifact_root or self.root) / "previews"
 
     @property
     def stage(self) -> Path:

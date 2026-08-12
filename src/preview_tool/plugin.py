@@ -12,13 +12,20 @@ from typing import Any, Mapping
 
 from . import __version__
 from .discovery import discover, representable, require_project
-from .paths import ProjectPaths
-from .publication import ProjectLock, prepare_stage, publish
+from .paths import ProjectPaths, require_artifact_separation, resolve_artifact_root
+from .publication import (
+    ProjectLock,
+    prepare_stage,
+    publish,
+    require_atomic_exchange_support,
+)
 from .schema import MAX_JSON_BYTES, canonical_json, loads_strict
 from .validation import read_bounded_regular, validate_bundle
 
 PLUGIN_DIRECTORY = "in-progress-plugin"
-PLUGIN_FILES = frozenset({"in-progress.plugin.json", "index.html"})
+PLUGIN_FILES = frozenset(
+    {"in-progress.plugin.json", "index.html", "preview-index.json"}
+)
 PLUGIN_MANIFEST = {
     "apiVersion": "1.0",
     "id": "preview",
@@ -50,9 +57,8 @@ class PluginBuildResult:
 
 
 def _published_projects(
-    root: Path, current_projects: tuple[str, ...]
+    preview_home: Path, current_projects: tuple[str, ...]
 ) -> tuple[tuple[str, ...], tuple[str, ...]]:
-    preview_home = root / "previews"
     try:
         entries = sorted(preview_home.iterdir(), key=lambda entry: entry.name)
     except FileNotFoundError:
@@ -163,11 +169,12 @@ def _validated_dashboards(
     root: Path,
     projects: tuple[str, ...],
     sources: Mapping[str, Path],
+    artifact_root: Path | None,
 ) -> dict[str, dict[str, str]]:
     dashboards: dict[str, dict[str, str]] = {}
     for project in projects:
         source = sources[project]
-        paths = ProjectPaths(root=root, project=project)
+        paths = ProjectPaths(root=root, project=project, artifact_root=artifact_root)
         report = validate_bundle(
             paths.live,
             expected_slug=project,
@@ -211,27 +218,50 @@ def _resolve_sources(root: Path, sources: Mapping[str, Path] | None) -> dict[str
 def build_plugin(
     root: Path,
     sources: Mapping[str, Path] | None = None,
+    *,
+    artifact_root: Path | None = None,
 ) -> PluginBuildResult:
     """Validate current-source publishes and atomically emit one aggregate static plugin."""
     resolved_root = root.resolve(strict=True)
-    lock = resolved_root / "previews" / ".locks" / ".plugin-build.lock"
-    output_home = resolved_root / "dist"
+    resolved_artifacts = resolve_artifact_root(artifact_root)
+    preview_home = (resolved_artifacts or resolved_root) / "previews"
+    lock = preview_home / ".locks" / ".plugin-build.lock"
+    output_home = resolved_artifacts or resolved_root / "dist"
     output = output_home / PLUGIN_DIRECTORY
     stage = output_home / f".{PLUGIN_DIRECTORY}.partial"
     backup = output_home / f".{PLUGIN_DIRECTORY}.previous"
+    resolved_sources = _resolve_sources(resolved_root, sources)
+    if resolved_artifacts is not None:
+        for source in resolved_sources.values():
+            try:
+                require_artifact_separation(resolved_artifacts, source)
+            except ValueError as error:
+                raise PluginBuildError(str(error)) from error
+    require_atomic_exchange_support(output_home)
     with ProjectLock(lock):
         prepare_stage(stage, backup, output)
-        resolved_sources = _resolve_sources(resolved_root, sources)
         current = tuple(resolved_sources)
         with ExitStack() as project_locks:
             for project in current:
-                paths = ProjectPaths(root=resolved_root, project=project)
+                paths = ProjectPaths(
+                    root=resolved_root,
+                    project=project,
+                    artifact_root=resolved_artifacts,
+                )
                 project_locks.enter_context(ProjectLock(paths.lock))
-            projects, skipped = _published_projects(resolved_root, current)
-            dashboards = _validated_dashboards(resolved_root, projects, resolved_sources)
+            projects, skipped = _published_projects(preview_home, current)
+            dashboards = _validated_dashboards(
+                resolved_root,
+                projects,
+                resolved_sources,
+                resolved_artifacts,
+            )
             files = {
                 "in-progress.plugin.json": canonical_json(PLUGIN_MANIFEST),
                 "index.html": _render_entry(resolved_root, dashboards),
+                "preview-index.json": canonical_json(
+                    {"schemaVersion": 1, "projects": list(projects)}
+                ),
             }
 
         for name in sorted(PLUGIN_FILES):

@@ -7,6 +7,7 @@ import shutil
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 from test_contract import valid_data
 
@@ -37,7 +38,12 @@ class PluginBuildTests(unittest.TestCase):
     def tearDown(self) -> None:
         self.temporary.cleanup()
 
-    def publish(self, project: str, data: dict[str, object] | None = None) -> tuple[Path, Path]:
+    def publish(
+        self,
+        project: str,
+        data: dict[str, object] | None = None,
+        artifact_root: Path | None = None,
+    ) -> tuple[Path, Path]:
         source = self.parent / project
         source.mkdir()
         (source / "source.txt").write_text(
@@ -45,15 +51,16 @@ class PluginBuildTests(unittest.TestCase):
             encoding="utf-8",
         )
         model = data or valid_data(project)
-        live = self.root / "previews" / project
-        live.mkdir()
+        preview_home = (artifact_root or self.root) / "previews"
+        live = preview_home / project
+        live.mkdir(parents=True)
         (live / "preview.json").write_bytes(canonical_json(model))
         for name, content in compiled_files(model, self.root / "templates").items():
             (live / name).write_bytes(content)
         return source, live
 
-    def output_bytes(self) -> dict[str, bytes]:
-        output = self.root / "dist" / "in-progress-plugin"
+    def output_bytes(self, output: Path | None = None) -> dict[str, bytes]:
+        output = output or self.root / "dist" / "in-progress-plugin"
         return {entry.name: entry.read_bytes() for entry in sorted(output.iterdir())}
 
     def test_builds_deterministic_self_contained_project_switching_plugin(self) -> None:
@@ -75,6 +82,10 @@ class PluginBuildTests(unittest.TestCase):
         self.assertEqual(first, second)
         self.assertEqual(set(first), PLUGIN_FILES)
         self.assertEqual(json.loads(first["in-progress.plugin.json"]), PLUGIN_MANIFEST)
+        self.assertEqual(
+            json.loads(first["preview-index.json"]),
+            {"projects": ["alpha", "in-progress"], "schemaVersion": 1},
+        )
 
         index = first["index.html"].decode("utf-8")
         self.assertNotIn("{{", index)
@@ -218,6 +229,82 @@ class PluginBuildTests(unittest.TestCase):
         marker = 'id="preview-plugin-data" type="application/json">'
         embedded = json.loads(index.split(marker, 1)[1].split("</script>", 1)[0])
         self.assertEqual(tuple(embedded), ("nested",))
+
+    def test_external_artifact_root_owns_plugin_input_output_and_index(self) -> None:
+        artifacts = self.parent / "host-state"
+        source, _ = self.publish("alpha", artifact_root=artifacts)
+
+        result = build_plugin(
+            self.root,
+            {"alpha": source},
+            artifact_root=artifacts,
+        )
+
+        self.assertEqual(result.output, artifacts / "in-progress-plugin")
+        self.assertFalse((self.root / "dist/in-progress-plugin").exists())
+        files = self.output_bytes(result.output)
+        self.assertEqual(set(files), PLUGIN_FILES)
+        self.assertEqual(
+            files["preview-index.json"],
+            canonical_json({"schemaVersion": 1, "projects": ["alpha"]}),
+        )
+
+        stdout = io.StringIO()
+        with contextlib.redirect_stdout(stdout):
+            code = main(
+                [
+                    "plugin-build",
+                    "--artifact-root",
+                    str(artifacts),
+                    "--source",
+                    "alpha",
+                    str(source),
+                ],
+                root=self.root,
+            )
+        self.assertEqual(code, 0)
+        self.assertEqual(
+            stdout.getvalue(),
+            f"built {artifacts / 'in-progress-plugin'} with 1 dashboard\n",
+        )
+
+    def test_overlapping_artifact_root_is_rejected_before_plugin_state_write(self) -> None:
+        source, _ = self.publish("alpha")
+        artifacts = source / ".generated"
+
+        with self.assertRaisesRegex(PluginBuildError, "artifact root must be outside the source"):
+            build_plugin(
+                self.root,
+                {"alpha": source},
+                artifact_root=artifacts,
+            )
+
+        self.assertFalse(artifacts.exists())
+
+    def test_atomic_publication_support_is_required_before_plugin_state_write(self) -> None:
+        source, _ = self.publish("alpha")
+        with (
+            mock.patch(
+                "preview_tool.plugin.require_atomic_exchange_support",
+                side_effect=RuntimeError("unsupported output filesystem"),
+            ),
+            self.assertRaisesRegex(RuntimeError, "unsupported output filesystem"),
+        ):
+            build_plugin(self.root, {"alpha": source})
+
+        self.assertFalse((self.root / "dist/in-progress-plugin").exists())
+
+    def test_artifact_root_containing_source_is_rejected_before_plugin_state_write(self) -> None:
+        source, _ = self.publish("alpha")
+
+        with self.assertRaisesRegex(PluginBuildError, "artifact root must be outside the source"):
+            build_plugin(
+                self.root,
+                {"alpha": source},
+                artifact_root=self.parent,
+            )
+
+        self.assertFalse((self.parent / "in-progress-plugin").exists())
 
     def test_named_dry_run_accepts_explicit_non_sibling_source(self) -> None:
         source, _ = self.publish("nested")

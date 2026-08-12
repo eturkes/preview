@@ -9,7 +9,12 @@ from pathlib import Path
 from . import __version__
 from .discovery import discover, representable, require_project
 from .generation import compile_project, dry_run, generate_batch, generate_project
-from .paths import ProjectPaths, repo_root
+from .paths import (
+    ProjectPaths,
+    repo_root,
+    require_artifact_separation,
+    resolve_artifact_root,
+)
 from .plugin import build_plugin
 from .publication import ProjectLock
 from .server import serve
@@ -20,6 +25,14 @@ HOST_READ_WARNING = (
     "preview: warning: Codex can read any host-readable path; generate only from a "
     "trusted source checkout"
 )
+
+
+def _artifact_argument(command: argparse.ArgumentParser) -> None:
+    command.add_argument(
+        "--artifact-root",
+        type=Path,
+        help="store generated previews and aggregate plugin under this host-owned directory",
+    )
 
 
 def parser() -> argparse.ArgumentParser:
@@ -46,6 +59,12 @@ def parser() -> argparse.ArgumentParser:
         type=Path,
         help="generate the named project from this explicit trusted source checkout",
     )
+    _artifact_argument(generate)
+    generate.add_argument(
+        "--codex-executable",
+        type=Path,
+        help="use this exact Codex executable (resolved to an absolute path)",
+    )
     compile_command = subcommands.add_parser(
         "compile",
         help="validate and atomically recompile one published model without Codex",
@@ -61,6 +80,7 @@ def parser() -> argparse.ArgumentParser:
         type=Path,
         help="validate against this explicit trusted source checkout",
     )
+    _artifact_argument(compile_command)
     validate = subcommands.add_parser("validate", help="validate one published preview")
     validate.add_argument("name")
     validate.add_argument(
@@ -68,6 +88,7 @@ def parser() -> argparse.ArgumentParser:
         type=Path,
         help="validate against this explicit trusted source checkout",
     )
+    _artifact_argument(validate)
     server = subcommands.add_parser("serve", help="serve one validated preview on loopback")
     server.add_argument("name")
     server.add_argument(
@@ -75,6 +96,7 @@ def parser() -> argparse.ArgumentParser:
         type=Path,
         help="validate against this explicit trusted source checkout",
     )
+    _artifact_argument(server)
     server.add_argument("--port", type=int, default=4173)
     server.add_argument("--open", action="store_true", dest="open_browser")
     plugin_build = subcommands.add_parser(
@@ -89,6 +111,7 @@ def parser() -> argparse.ArgumentParser:
         metavar=("NAME", "PATH"),
         help="include NAME using an explicit trusted source checkout; repeatable",
     )
+    _artifact_argument(plugin_build)
     return command
 
 
@@ -96,7 +119,13 @@ def _report_text(report: Report) -> str:
     return report.format()
 
 
-def _validate(root: Path, name: str, source: Path | None = None) -> tuple[Report, ProjectPaths]:
+def _project_paths(
+    root: Path,
+    name: str,
+    source: Path | None = None,
+    *,
+    artifact_root: Path | None = None,
+) -> ProjectPaths:
     if not representable(name):
         raise ValueError(f"invalid project name {name!r}")
     if source is None:
@@ -105,17 +134,44 @@ def _validate(root: Path, name: str, source: Path | None = None) -> tuple[Report
         resolved_source = source.resolve(strict=True)
         if not resolved_source.is_dir():
             raise ValueError(f"source is not a directory: {resolved_source}")
-    paths = ProjectPaths(root=root, project=name, source_override=resolved_source)
+    resolved_artifacts = resolve_artifact_root(artifact_root)
+    paths = ProjectPaths(
+        root=root,
+        project=name,
+        source_override=resolved_source,
+        artifact_root=resolved_artifacts,
+    )
+    if resolved_artifacts is not None:
+        require_artifact_separation(resolved_artifacts, resolved_source)
+    return paths
+
+
+def _validate_paths(paths: ProjectPaths) -> Report:
     if not paths.live.is_dir() or paths.live.is_symlink():
-        raise ValueError(f"no published preview for {name!r}")
-    report = validate_bundle(
+        raise ValueError(f"no published preview for {paths.project!r}")
+    return validate_bundle(
         paths.live,
-        expected_slug=name,
-        source_base=resolved_source,
+        expected_slug=paths.project,
+        source_base=paths.source,
         artifact_home=paths.preview_home,
         template_dir=paths.templates,
     )
-    return report, paths
+
+
+def _validate(
+    root: Path,
+    name: str,
+    source: Path | None = None,
+    *,
+    artifact_root: Path | None = None,
+) -> tuple[Report, ProjectPaths]:
+    paths = _project_paths(
+        root,
+        name,
+        source,
+        artifact_root=artifact_root,
+    )
+    return _validate_paths(paths), paths
 
 
 def _plugin_sources(values: list[list[str]]) -> dict[str, Path] | None:
@@ -153,10 +209,25 @@ def main(argv: list[str] | None = None, *, root: Path | None = None) -> int:
         if args.command == "generate":
             if args.name is not None:
                 if args.dry_run:
-                    print(dry_run(actual_root, args.name, args.source), end="")
+                    print(
+                        dry_run(
+                            actual_root,
+                            args.name,
+                            args.source,
+                            artifact_root=args.artifact_root,
+                            codex_executable=args.codex_executable,
+                        ),
+                        end="",
+                    )
                     return 0
                 print(HOST_READ_WARNING, file=sys.stderr)
-                outcome = generate_project(actual_root, args.name, args.source)
+                outcome = generate_project(
+                    actual_root,
+                    args.name,
+                    args.source,
+                    artifact_root=args.artifact_root,
+                    codex_executable=args.codex_executable,
+                )
                 stream = sys.stdout if outcome.ok else sys.stderr
                 print(outcome.message, file=stream)
                 return int(not outcome.ok)
@@ -176,14 +247,27 @@ def main(argv: list[str] | None = None, *, root: Path | None = None) -> int:
                         print(f"[FAILED] {name}: enabled project is missing")
                         failures += 1
                     else:
-                        print(dry_run(actual_root, name), end="")
+                        print(
+                            dry_run(
+                                actual_root,
+                                name,
+                                artifact_root=args.artifact_root,
+                                codex_executable=args.codex_executable,
+                            ),
+                            end="",
+                        )
                 print(f"summary: {len(targets) - failures} plans, {failures} failed")
                 return int(failures > 0)
             current = [name for name in targets if name in projects]
             missing = [name for name in targets if name not in projects]
             if current:
                 print(HOST_READ_WARNING, file=sys.stderr)
-            text, code = generate_batch(actual_root, current)
+            text, code = generate_batch(
+                actual_root,
+                current,
+                artifact_root=args.artifact_root,
+                codex_executable=args.codex_executable,
+            )
             if missing:
                 prefix = "".join(
                     f"[FAILED] {name}\nenabled project is missing\n" for name in missing
@@ -193,16 +277,25 @@ def main(argv: list[str] | None = None, *, root: Path | None = None) -> int:
             print(text, end="")
             return code
         if args.command == "compile":
-            outcome = compile_project(actual_root, args.name, args.model, args.source)
+            outcome = compile_project(
+                actual_root,
+                args.name,
+                args.model,
+                args.source,
+                artifact_root=args.artifact_root,
+            )
             stream = sys.stdout if outcome.ok else sys.stderr
             print(outcome.message, file=stream)
             return int(not outcome.ok)
         if args.command == "validate":
-            if not representable(args.name):
-                raise ValueError(f"invalid project name {args.name!r}")
-            paths = ProjectPaths(root=actual_root, project=args.name)
+            paths = _project_paths(
+                actual_root,
+                args.name,
+                args.source,
+                artifact_root=args.artifact_root,
+            )
             with ProjectLock(paths.lock):
-                report, _ = _validate(actual_root, args.name, args.source)
+                report = _validate_paths(paths)
                 text = _report_text(report)
                 if text:
                     print(text)
@@ -210,21 +303,31 @@ def main(argv: list[str] | None = None, *, root: Path | None = None) -> int:
                     print(f"valid previews/{args.name}")
                 return int(not report.ok)
         if args.command == "serve":
-            if not representable(args.name):
-                raise ValueError(f"invalid project name {args.name!r}")
-            paths = ProjectPaths(root=actual_root, project=args.name)
+            paths = _project_paths(
+                actual_root,
+                args.name,
+                args.source,
+                artifact_root=args.artifact_root,
+            )
             with ProjectLock(paths.lock):
-                report, paths = _validate(actual_root, args.name, args.source)
+                report = _validate_paths(paths)
                 if not report.ok:
                     print(_report_text(report), file=sys.stderr)
                     return 1
                 serve(paths.live, args.port, open_browser=args.open_browser)
             return 0
         if args.command == "plugin-build":
-            result = build_plugin(actual_root, _plugin_sources(args.source))
+            result = build_plugin(
+                actual_root,
+                _plugin_sources(args.source),
+                artifact_root=args.artifact_root,
+            )
             count = len(result.projects)
             noun = "dashboard" if count == 1 else "dashboards"
-            location = result.output.relative_to(actual_root)
+            try:
+                location = result.output.relative_to(actual_root)
+            except ValueError:
+                location = result.output
             print(f"built {location} with {count} {noun}")
             if result.skipped:
                 names = ", ".join(result.skipped)

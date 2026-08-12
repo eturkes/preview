@@ -5,7 +5,7 @@ set -eu
 self=$(readlink -f -- "$0")
 root=$(CDPATH='' cd -- "$(dirname -- "$self")/.." && pwd -P)
 
-exec python3 -I -c '
+exec python3 -I -B -c '
 import runpy
 import sys
 
