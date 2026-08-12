@@ -46,7 +46,7 @@
     },
     "id": "project-root",
     "quote": "Each project record supplies the trusted canonical working directory used for sanitized read-only Git queries, plugin reads, and new shells.",
-    "src": "docs/architecture.md:L63-L63",
+    "src": "docs/architecture.md:L71-L71",
     "status": "verified"
   },
   {
@@ -56,7 +56,7 @@
     },
     "id": "session-lifetime",
     "quote": "Changing project/view or losing the browser connection does **not** kill the PTY. Reattach receives the byte-ring snapshot, then live output. Sessions survive browser reload/network loss only while the in-progress process remains alive",
-    "src": "docs/architecture.md:L83-L83",
+    "src": "docs/architecture.md:L91-L91",
     "status": "verified"
   },
   {
@@ -66,7 +66,7 @@
     },
     "id": "writer-lease",
     "quote": "Multiple clients may observe one session. The newest attachment owns input/resize; another client sends `claim` to take the writer lease.",
-    "src": "docs/architecture.md:L85-L85",
+    "src": "docs/architecture.md:L93-L93",
     "status": "verified"
   },
   {
@@ -76,7 +76,7 @@
     },
     "id": "manifest-install",
     "quote": "other read endpoints and plugin entry documents require and refresh an existing session. Declared plugin module/style/font/image assets remain unauthenticated because the opaque-origin frame cannot attach host credentials to their CORS loads.",
-    "src": "docs/architecture.md:L115-L115",
+    "src": "docs/architecture.md:L123-L123",
     "status": "verified"
   },
   {
@@ -96,7 +96,7 @@
     },
     "id": "preview-match",
     "quote": "| Preview       | Selects a validated packaged dashboard matching the active project ID         | None                                   |",
-    "src": "README.md:L128-L128",
+    "src": "README.md:L130-L130",
     "status": "verified"
   },
   {
@@ -106,7 +106,7 @@
     },
     "id": "ecosystem-command",
     "quote": "pnpm ecosystem:build\npnpm dev:ecosystem",
-    "src": "README.md:L119-L120",
+    "src": "README.md:L121-L122",
     "status": "verified"
   },
   {
@@ -116,7 +116,7 @@
     },
     "id": "host-integrations",
     "quote": "Integration configuration is also static and host-owned. Align gets one fixed read-only status\ninvocation; Drift gets one fixed validating render invocation; Tree Complete loads one built\nembedded service per selected project with host-fixed project/data roots and runner mode. Static\nplugin manifests grant access to those named methods but cannot configure code, argv, paths, or\nmode.",
-    "src": "docs/architecture.md:L65-L69",
+    "src": "docs/architecture.md:L73-L77",
     "status": "inferred"
   },
   {
@@ -126,16 +126,16 @@
     },
     "id": "ecosystem-build-validation",
     "quote": "The build command compiles Drift, Preview, Tree Complete, and Turbo Prompt, then validates all five\nmanifests with the host validator.",
-    "src": "README.md:L132-L133",
+    "src": "README.md:L134-L135",
     "status": "verified"
   },
   {
     "claim": {
-      "en": "The pnpm check script runs format checking, lint, type checks, tests, and the production build in sequence.",
-      "ja": "pnpm checkスクリプトは整形確認、lint、型検査、テスト、本番ビルドを順に実行します。"
+      "en": "The pnpm check script runs format checking, lint, type checks, tests, the production build, and the Frontier gate in sequence.",
+      "ja": "pnpm checkスクリプトは整形確認、lint、型検査、テスト、本番ビルド、Frontierゲートを順に実行します。"
     },
     "id": "quality-gate",
-    "quote": "\"check\": \"pnpm format:check && pnpm lint && pnpm typecheck && pnpm test && pnpm build\"",
+    "quote": "\"check\": \"pnpm format:check && pnpm lint && pnpm typecheck && pnpm test && pnpm build && pnpm check:frontier\"",
     "src": "package.json:L12-L12",
     "status": "verified"
   },
