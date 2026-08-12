@@ -137,21 +137,23 @@ next locked operation removes that residue.
 | `enable NAME` | Enable a current sibling. |
 | `disable NAME` | Disable a current or stale enabled name. |
 | `toggle NAME` | Flip a current sibling, or clear a stale enabled name. |
-| `generate [NAME] [--dry-run]` | Generate one project or the enabled set. |
-| `compile NAME [--model FILE]` | Validate, compile, and atomically publish a declarative model without Codex. |
-| `validate NAME` | Revalidate one published bundle against its current sibling. |
-| `serve NAME [--port N] [--open]` | Validate, then serve one bundle on loopback. |
-| `plugin-build` | Validate current-source publishes and build one static in-progress plugin. |
+| `generate [NAME] [--source PATH] [--dry-run]` | Generate one project or the enabled set. Explicit source requires `NAME` and supports non-sibling checkouts. |
+| `compile NAME [--model FILE] [--source PATH]` | Validate, compile, and atomically publish a declarative model without Codex. Explicit source supports non-sibling checkouts. |
+| `validate NAME [--source PATH]` | Revalidate one published bundle against its current or explicit source. |
+| `serve NAME [--source PATH] [--port N] [--open]` | Validate, then serve one bundle on loopback. |
+| `plugin-build [--source NAME PATH]...` | Validate current-source publishes and build one static in-progress plugin. Explicit mappings support non-sibling checkouts. |
 
 ### in-progress plugin
 
 `preview plugin-build` validates every non-hidden published bundle that still
-has a current sibling source against that source and the trusted templates,
-then atomically replaces `dist/in-progress-plugin/`. Stale publishes without a
-current sibling are excluded with a warning; any included validation failure
-preserves the prior plugin. The aggregate build locks every current sibling
-before discovering publishes, so a concurrent generation/compile rename gap
-fails closed instead of silently omitting a dashboard. The output has two
+has a current source against that source and the trusted templates, then
+atomically replaces `dist/in-progress-plugin/`. With no `--source`, current
+sources are direct siblings. One or more explicit `--source NAME PATH` mappings
+replace sibling discovery for nested/submodule layouts. Stale publishes without
+a mapped/current source are excluded with a warning; any included validation
+failure preserves the prior plugin. The aggregate build locks every current
+project before discovering publishes, so a concurrent generation/compile rename
+gap fails closed instead of silently omitting a dashboard. The output has two
 files: a strict `in-progress.plugin.json` manifest and one self-contained `index.html`; it
 performs no Codex call and requests no host capabilities.
 
@@ -276,7 +278,7 @@ committing, sharing, or serving it.
 - Open each evidence badge; compare the claim and status with any source range
   and matched quote.
 - Review every gap's checked evidence and follow-up; accept or resolve it explicitly.
-- Run `preview validate PROJECT` against the intended current sibling source.
+- Run `preview validate PROJECT [--source PATH]` against the intended source checkout.
 - Inspect published and retained staged bytes for secrets, identifiers, unsafe
   excerpts, and claims that exceed their evidence before sharing or committing.
 

@@ -491,13 +491,13 @@
           },
           {
             "body": {
-              "en": "The ecosystem workflow builds sibling outputs before launching the host with its ecosystem configuration.",
-              "ja": "エコシステム手順では、エコシステム設定でホストを起動する前に兄弟プロジェクトの出力をビルドします。"
+              "en": "The ecosystem workflow initializes pinned submodules and builds their outputs before launching the host with its ecosystem configuration.",
+              "ja": "エコシステム手順では、固定済みサブモジュールを初期化し、その出力をビルドしてからエコシステム設定でホストを起動します。"
             },
             "code": {
               "claim_id": "ecosystem-command",
               "language": "sh",
-              "text": "pnpm ecosystem:build\npnpm dev:ecosystem"
+              "text": "git submodule update --init --recursive\npnpm ecosystem:build\npnpm dev:ecosystem"
             },
             "demo": {
               "button": {
@@ -651,13 +651,13 @@
               {
                 "claim_id": "ecosystem-build-validation",
                 "detail": {
-                  "en": "The ecosystem build compiles four sibling outputs, then validates all five manifests with the host validator.",
-                  "ja": "エコシステムビルドは4つの兄弟出力をコンパイルし、その後ホスト検証器で5つすべてのマニフェストを検証します。"
+                  "en": "The ecosystem build compiles four pinned plugin outputs, then validates all five manifests with the host validator.",
+                  "ja": "エコシステムビルドは4つの固定済みプラグイン出力をコンパイルし、その後ホスト検証器で5つすべてのマニフェストを検証します。"
                 },
                 "id": "ecosystem-build-item",
                 "label": {
-                  "en": "Sibling package gate",
-                  "ja": "兄弟パッケージゲート"
+                  "en": "Pinned package gate",
+                  "ja": "固定パッケージゲート"
                 },
                 "magnitude": 0,
                 "status": "current",
@@ -934,17 +934,17 @@
       },
       "id": "preview-match",
       "quote": "| Preview       | Selects a validated packaged dashboard matching the active project ID         | None                                   |",
-      "src": "README.md:L130-L130",
+      "src": "README.md:L134-L134",
       "status": "verified"
     },
     {
       "claim": {
-        "en": "The documented ecosystem workflow builds sibling outputs and then starts the ecosystem development configuration.",
-        "ja": "文書化されたエコシステム手順は兄弟出力をビルドしてからエコシステム開発設定を起動します。"
+        "en": "The documented ecosystem workflow initializes pinned submodules, builds their outputs, and then starts the ecosystem development configuration.",
+        "ja": "文書化されたエコシステム手順は固定済みサブモジュールを初期化し、その出力をビルドしてからエコシステム開発設定を起動します。"
       },
       "id": "ecosystem-command",
-      "quote": "pnpm ecosystem:build\npnpm dev:ecosystem",
-      "src": "README.md:L121-L122",
+      "quote": "git submodule update --init --recursive\npnpm ecosystem:build\npnpm dev:ecosystem",
+      "src": "README.md:L124-L126",
       "status": "verified"
     },
     {
@@ -964,7 +964,7 @@
       },
       "id": "ecosystem-build-validation",
       "quote": "The build command compiles Drift, Preview, Tree Complete, and Turbo Prompt, then validates all five\nmanifests with the host validator.",
-      "src": "README.md:L134-L135",
+      "src": "README.md:L138-L139",
       "status": "verified"
     },
     {

@@ -26,6 +26,11 @@ class DiscoveryTests(unittest.TestCase):
         accepted = ["alpha", "two words", "研究"]
         rejected = [
             "",
+            ".",
+            "..",
+            ".partial",
+            ".previous",
+            ".locks",
             "-flag",
             " lead",
             "trail ",

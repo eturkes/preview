@@ -15,10 +15,11 @@ def repo_root() -> Path:
 class ProjectPaths:
     root: Path
     project: str
+    source_override: Path | None = None
 
     @property
     def source(self) -> Path:
-        return self.root.parent / self.project
+        return self.source_override or self.root.parent / self.project
 
     @property
     def preview_home(self) -> Path:

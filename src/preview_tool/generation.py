@@ -12,7 +12,7 @@ from contextlib import suppress
 from dataclasses import dataclass
 from pathlib import Path
 
-from .discovery import require_project
+from .discovery import representable, require_project
 from .paths import ProjectPaths
 from .publication import ProjectLock, prepare_stage, publish
 from .render import compiled_files
@@ -49,10 +49,21 @@ class GenerationOutcome:
     message: str
 
 
-def plan_generation(root: Path, project: str) -> GenerationPlan:
+def plan_generation(root: Path, project: str, source: Path | None = None) -> GenerationPlan:
     resolved_root = root.resolve(strict=True)
-    require_project(resolved_root, project)
-    paths = ProjectPaths(root=resolved_root, project=project)
+    if not representable(project):
+        raise ValueError(f"invalid project name {project!r}")
+    if source is None:
+        resolved_source = require_project(resolved_root, project)
+    else:
+        resolved_source = source.resolve(strict=True)
+        if not resolved_source.is_dir():
+            raise ValueError(f"source is not a directory: {resolved_source}")
+    paths = ProjectPaths(
+        root=resolved_root,
+        project=project,
+        source_override=resolved_source,
+    )
     return GenerationPlan(
         paths=paths,
         prompt_contract=paths.templates / "dashboard-prompt.md",
@@ -113,8 +124,8 @@ document, resolving every finding below without weakening evidence or inventing 
     return contract.rstrip() + runtime + "\n"
 
 
-def dry_run(root: Path, project: str) -> str:
-    plan = plan_generation(root, project)
+def dry_run(root: Path, project: str, source: Path | None = None) -> str:
+    plan = plan_generation(root, project, source)
     return (
         f"project:   {project}\n"
         f"source:    {plan.paths.source}\n"
@@ -239,10 +250,13 @@ def _write_compiled(plan: GenerationPlan, raw: bytes) -> Report:
 
 
 def compile_project(
-    root: Path, project: str, model_path: Path | None = None
+    root: Path,
+    project: str,
+    model_path: Path | None = None,
+    source: Path | None = None,
 ) -> GenerationOutcome:
     """Recompile one published declarative model without invoking Codex."""
-    plan = plan_generation(root, project)
+    plan = plan_generation(root, project, source)
     with ProjectLock(plan.paths.lock):
         prepare_stage(plan.paths.stage, plan.paths.backup, plan.paths.live)
         try:
@@ -295,8 +309,12 @@ def compile_project(
         return GenerationOutcome(project, True, message)
 
 
-def generate_project(root: Path, project: str) -> GenerationOutcome:
-    plan = plan_generation(root, project)
+def generate_project(
+    root: Path,
+    project: str,
+    source: Path | None = None,
+) -> GenerationOutcome:
+    plan = plan_generation(root, project, source)
     repair = ""
     with ProjectLock(plan.paths.lock):
         for attempt in range(1, MAX_ATTEMPTS + 1):

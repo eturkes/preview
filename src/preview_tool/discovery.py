@@ -8,7 +8,13 @@ from pathlib import Path
 
 def representable(name: str) -> bool:
     """Whether a sibling name is stable in CLI args, paths, and line state."""
-    if not name or name.startswith("-") or name[0].isspace() or name[-1].isspace():
+    if (
+        not name
+        or name.startswith(".")
+        or name.startswith("-")
+        or name[0].isspace()
+        or name[-1].isspace()
+    ):
         return False
     for char in name:
         codepoint = ord(char)

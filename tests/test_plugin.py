@@ -198,6 +198,61 @@ class PluginBuildTests(unittest.TestCase):
         )
         self.assertEqual(data, PLUGIN_MANIFEST)
 
+    def test_plugin_build_accepts_explicit_non_sibling_sources(self) -> None:
+        source, _ = self.publish("nested")
+        source_home = self.parent / "nested-layout"
+        source_home.mkdir()
+        mapped_source = source_home / "repository"
+        source.rename(mapped_source)
+
+        stdout = io.StringIO()
+        with contextlib.redirect_stdout(stdout):
+            code = main(
+                ["plugin-build", "--source", "nested", str(mapped_source)],
+                root=self.root,
+            )
+
+        self.assertEqual(code, 0)
+        self.assertEqual(stdout.getvalue(), "built dist/in-progress-plugin with 1 dashboard\n")
+        index = self.output_bytes()["index.html"].decode("utf-8")
+        marker = 'id="preview-plugin-data" type="application/json">'
+        embedded = json.loads(index.split(marker, 1)[1].split("</script>", 1)[0])
+        self.assertEqual(tuple(embedded), ("nested",))
+
+    def test_named_dry_run_accepts_explicit_non_sibling_source(self) -> None:
+        source, _ = self.publish("nested")
+        source_home = self.parent / "nested-layout"
+        source_home.mkdir()
+        mapped_source = source_home / "repository"
+        source.rename(mapped_source)
+
+        stdout = io.StringIO()
+        with contextlib.redirect_stdout(stdout):
+            code = main(
+                ["generate", "nested", "--source", str(mapped_source), "--dry-run"],
+                root=self.root,
+            )
+
+        self.assertEqual(code, 0)
+        self.assertIn(f"source:    {mapped_source}\n", stdout.getvalue())
+
+    def test_validate_accepts_explicit_non_sibling_source(self) -> None:
+        source, _ = self.publish("nested")
+        source_home = self.parent / "nested-layout"
+        source_home.mkdir()
+        mapped_source = source_home / "repository"
+        source.rename(mapped_source)
+
+        stdout = io.StringIO()
+        with contextlib.redirect_stdout(stdout):
+            code = main(
+                ["validate", "nested", "--source", str(mapped_source)],
+                root=self.root,
+            )
+
+        self.assertEqual(code, 0)
+        self.assertEqual(stdout.getvalue(), "valid previews/nested\n")
+
 
 if __name__ == "__main__":
     unittest.main()

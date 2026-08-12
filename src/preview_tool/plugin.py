@@ -8,7 +8,7 @@ import stat
 from contextlib import ExitStack
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
+from typing import Any, Mapping
 
 from . import __version__
 from .discovery import discover, representable, require_project
@@ -159,10 +159,14 @@ def _render_entry(root: Path, dashboards: dict[str, dict[str, str]]) -> bytes:
     return shell.encode("utf-8")
 
 
-def _validated_dashboards(root: Path, projects: tuple[str, ...]) -> dict[str, dict[str, str]]:
+def _validated_dashboards(
+    root: Path,
+    projects: tuple[str, ...],
+    sources: Mapping[str, Path],
+) -> dict[str, dict[str, str]]:
     dashboards: dict[str, dict[str, str]] = {}
     for project in projects:
-        source = require_project(root, project)
+        source = sources[project]
         paths = ProjectPaths(root=root, project=project)
         report = validate_bundle(
             paths.live,
@@ -190,7 +194,24 @@ def _validated_dashboards(root: Path, projects: tuple[str, ...]) -> dict[str, di
     return dashboards
 
 
-def build_plugin(root: Path) -> PluginBuildResult:
+def _resolve_sources(root: Path, sources: Mapping[str, Path] | None) -> dict[str, Path]:
+    if sources is None:
+        return {project: require_project(root, project) for project in discover(root)}
+    resolved: dict[str, Path] = {}
+    for project in sorted(sources):
+        if not representable(project):
+            raise PluginBuildError(f"plugin source has an invalid project name: {project!r}")
+        source = sources[project].resolve(strict=True)
+        if not source.is_dir():
+            raise PluginBuildError(f"plugin source is not a directory: {source}")
+        resolved[project] = source
+    return resolved
+
+
+def build_plugin(
+    root: Path,
+    sources: Mapping[str, Path] | None = None,
+) -> PluginBuildResult:
     """Validate current-source publishes and atomically emit one aggregate static plugin."""
     resolved_root = root.resolve(strict=True)
     lock = resolved_root / "previews" / ".locks" / ".plugin-build.lock"
@@ -200,13 +221,14 @@ def build_plugin(root: Path) -> PluginBuildResult:
     backup = output_home / f".{PLUGIN_DIRECTORY}.previous"
     with ProjectLock(lock):
         prepare_stage(stage, backup, output)
-        current = discover(resolved_root)
+        resolved_sources = _resolve_sources(resolved_root, sources)
+        current = tuple(resolved_sources)
         with ExitStack() as project_locks:
             for project in current:
                 paths = ProjectPaths(root=resolved_root, project=project)
                 project_locks.enter_context(ProjectLock(paths.lock))
             projects, skipped = _published_projects(resolved_root, current)
-            dashboards = _validated_dashboards(resolved_root, projects)
+            dashboards = _validated_dashboards(resolved_root, projects, resolved_sources)
             files = {
                 "in-progress.plugin.json": canonical_json(PLUGIN_MANIFEST),
                 "index.html": _render_entry(resolved_root, dashboards),

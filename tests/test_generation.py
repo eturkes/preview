@@ -67,6 +67,34 @@ class GenerationTests(unittest.TestCase):
             )
             self.assertTrue(report.ok, report.format())
 
+    def test_generation_accepts_explicit_non_sibling_source(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            parent = Path(temporary)
+            root, source = self.workspace(parent)
+            nested = parent / "nested"
+            nested.mkdir()
+            mapped_source = nested / "source"
+            source.rename(mapped_source)
+
+            def fake_codex(plan, prompt):
+                self.assertEqual(plan.paths.source, mapped_source)
+                self.assertIn(f"Source root: `{mapped_source}`", prompt)
+                plan.output_file.write_bytes(canonical_json(valid_data()))
+                return subprocess.CompletedProcess([], 0, "", "")
+
+            with mock.patch("preview_tool.generation._run_codex", side_effect=fake_codex):
+                outcome = generate_project(root, "sample", mapped_source)
+
+            self.assertTrue(outcome.ok, outcome.message)
+            report = validate_bundle(
+                root / "previews/sample",
+                "sample",
+                mapped_source,
+                root / "previews",
+                root / "templates",
+            )
+            self.assertTrue(report.ok, report.format())
+
     def test_compile_canonicalizes_repairs_and_is_deterministic_without_codex(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             parent = Path(temporary)
@@ -148,6 +176,46 @@ class GenerationTests(unittest.TestCase):
             self.assertTrue(outcome.ok, outcome.message)
             report = validate_bundle(live, "sample", source, root / "previews", root / "templates")
             self.assertTrue(report.ok, report.format())
+
+    def test_compile_accepts_explicit_non_sibling_source(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            parent = Path(temporary)
+            root, source = self.workspace(parent)
+            live = root / "previews" / "sample"
+            live.mkdir()
+            (live / "preview.json").write_bytes(canonical_json(valid_data()))
+            nested = parent / "nested"
+            nested.mkdir()
+            mapped_source = nested / "source"
+            source.rename(mapped_source)
+
+            outcome = compile_project(root, "sample", source=mapped_source)
+
+            self.assertTrue(outcome.ok, outcome.message)
+            report = validate_bundle(
+                live,
+                "sample",
+                mapped_source,
+                root / "previews",
+                root / "templates",
+            )
+            self.assertTrue(report.ok, report.format())
+
+    def test_explicit_source_rejects_reserved_names_before_publication(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            parent = Path(temporary)
+            root, source = self.workspace(parent)
+            sentinel = root / "previews" / "sentinel"
+            sentinel.write_text("preserved\n", encoding="utf-8")
+
+            for project in (".", "..", ".partial", ".previous", ".locks"):
+                with self.subTest(project=project), self.assertRaisesRegex(
+                    ValueError,
+                    "invalid project name",
+                ):
+                    compile_project(root, project, source=source)
+
+            self.assertEqual(sentinel.read_text(encoding="utf-8"), "preserved\n")
 
     def test_compile_rejects_symlinked_live_directory(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
