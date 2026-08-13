@@ -6,11 +6,12 @@ import json
 import re
 import stat
 from contextlib import ExitStack
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any, Mapping
 
 from . import __version__
+from .artifact_git import prepare_artifact_git, snapshot_artifacts
 from .discovery import discover, representable, require_project
 from .paths import ProjectPaths, require_artifact_separation, resolve_artifact_root
 from .publication import (
@@ -19,6 +20,7 @@ from .publication import (
     publish,
     require_atomic_exchange_support,
 )
+from .records import read_record
 from .schema import MAX_JSON_BYTES, canonical_json, loads_strict
 from .validation import read_bounded_regular, validate_bundle
 
@@ -43,6 +45,7 @@ PLUGIN_PLACEHOLDERS = (
     "PREVIEW_RUNTIME",
     "PLUGIN_RUNTIME",
 )
+MAX_PLUGIN_PROJECTS = 1_000
 
 
 class PluginBuildError(ValueError):
@@ -201,6 +204,23 @@ def _validated_dashboards(
     return dashboards
 
 
+def _generation_records(
+    root: Path,
+    projects: tuple[str, ...],
+    artifact_root: Path | None,
+) -> list[dict[str, object]]:
+    records: list[dict[str, object]] = []
+    for project in projects:
+        paths = ProjectPaths(root=root, project=project, artifact_root=artifact_root)
+        try:
+            record = read_record(paths.record, project)
+        except (OSError, ValueError) as error:
+            raise PluginBuildError(f"invalid generation record for {project}: {error}") from error
+        if record is not None:
+            records.append(asdict(record))
+    return records
+
+
 def _resolve_sources(root: Path, sources: Mapping[str, Path] | None) -> dict[str, Path]:
     if sources is None:
         return {project: require_project(root, project) for project in discover(root)}
@@ -220,10 +240,13 @@ def build_plugin(
     sources: Mapping[str, Path] | None = None,
     *,
     artifact_root: Path | None = None,
+    git_track: bool = False,
 ) -> PluginBuildResult:
     """Validate current-source publishes and atomically emit one aggregate static plugin."""
     resolved_root = root.resolve(strict=True)
     resolved_artifacts = resolve_artifact_root(artifact_root)
+    if git_track and resolved_artifacts is None:
+        raise PluginBuildError("--git-track requires an external artifact root")
     preview_home = (resolved_artifacts or resolved_root) / "previews"
     lock = preview_home / ".locks" / ".plugin-build.lock"
     output_home = resolved_artifacts or resolved_root / "dist"
@@ -239,6 +262,9 @@ def build_plugin(
                 raise PluginBuildError(str(error)) from error
     require_atomic_exchange_support(output_home)
     with ProjectLock(lock):
+        if git_track:
+            assert resolved_artifacts is not None
+            prepare_artifact_git(resolved_artifacts)
         prepare_stage(stage, backup, output)
         current = tuple(resolved_sources)
         with ExitStack() as project_locks:
@@ -250,23 +276,39 @@ def build_plugin(
                 )
                 project_locks.enter_context(ProjectLock(paths.lock))
             projects, skipped = _published_projects(preview_home, current)
+            if len(projects) > MAX_PLUGIN_PROJECTS:
+                raise PluginBuildError(
+                    f"plugin project count exceeds {MAX_PLUGIN_PROJECTS}"
+                )
             dashboards = _validated_dashboards(
                 resolved_root,
                 projects,
                 resolved_sources,
                 resolved_artifacts,
             )
+            generation_records = _generation_records(
+                resolved_root,
+                projects,
+                resolved_artifacts,
+            )
             files = {
                 "in-progress.plugin.json": canonical_json(PLUGIN_MANIFEST),
                 "index.html": _render_entry(resolved_root, dashboards),
                 "preview-index.json": canonical_json(
-                    {"schemaVersion": 1, "projects": list(projects)}
+                    {
+                        "schemaVersion": 1,
+                        "projects": list(projects),
+                        "generations": generation_records,
+                    }
                 ),
             }
 
-        for name in sorted(PLUGIN_FILES):
-            (stage / name).write_bytes(files[name])
-        publish(stage, backup, output)
+            for name in sorted(PLUGIN_FILES):
+                (stage / name).write_bytes(files[name])
+            publish(stage, backup, output)
+            if git_track:
+                assert resolved_artifacts is not None
+                snapshot_artifacts(resolved_artifacts)
     return PluginBuildResult(output=output, projects=projects, skipped=skipped)
 
 

@@ -28,6 +28,7 @@ from preview_tool.generation import (
     plan_generation,
 )
 from preview_tool.render import compiled_files
+from preview_tool.records import normalize_user_prompt, read_record
 from preview_tool.schema import canonical_json
 from preview_tool.validation import Finding, Report, validate_bundle
 
@@ -46,6 +47,15 @@ class GenerationTests(unittest.TestCase):
         shutil.copytree(template_source, root / "templates")
         (root / "previews").mkdir()
         return root, source
+
+    def test_user_prompt_normalization_matches_browser_contract(self) -> None:
+        self.assertEqual(normalize_user_prompt("\ufeff direction \ufeff"), "direction")
+        self.assertEqual(
+            normalize_user_prompt(" " + ("x" * 8_000) + " "),
+            "x" * 8_000,
+        )
+        with self.assertRaisesRegex(ValueError, "exceeds 8000"):
+            normalize_user_prompt("😀" * 4_001)
 
     def test_valid_structured_output_compiles_and_publishes(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
@@ -74,6 +84,96 @@ class GenerationTests(unittest.TestCase):
                 root / "templates",
             )
             self.assertTrue(report.ok, report.format())
+
+    def test_incremental_prompt_and_explicit_fresh_strategy_are_recorded(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root, _ = self.workspace(Path(temporary))
+            prompts: list[str] = []
+
+            def fake_codex(plan, prompt):
+                prompts.append(prompt)
+                plan.output_file.write_bytes(canonical_json(valid_data()))
+                return subprocess.CompletedProcess([], 0, "", "")
+
+            with (
+                mock.patch("preview_tool.generation._preflight_codex"),
+                mock.patch("preview_tool.generation._run_codex", side_effect=fake_codex),
+            ):
+                first = generate_project(root, "sample")
+                updated = generate_project(
+                    root,
+                    "sample",
+                    user_prompt="Lead with the parser migration.",
+                )
+                fresh = generate_project(
+                    root,
+                    "sample",
+                    from_scratch=True,
+                    user_prompt="Use a compact release-readiness layout.",
+                )
+
+            self.assertTrue(first.ok, first.message)
+            self.assertTrue(updated.ok, updated.message)
+            self.assertTrue(fresh.ok, fresh.message)
+            self.assertIn("Initial generation", prompts[0])
+            self.assertIn("Incremental update", prompts[1])
+            self.assertIn(str(root / "previews/sample/preview.json"), prompts[1])
+            self.assertIn("Lead with the parser migration.", prompts[1])
+            self.assertIn("Fresh regeneration", prompts[2])
+            self.assertNotIn("Prior validated Preview model", prompts[2])
+            record = read_record(root / "previews/.records/sample.json", "sample")
+            self.assertIsNotNone(record)
+            assert record is not None
+            self.assertEqual(record.strategy, "fresh")
+            self.assertEqual(record.prompt, "Use a compact release-readiness layout.")
+
+    def test_expected_revision_requires_the_same_clean_commit_before_spending(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root, source = self.workspace(Path(temporary))
+            subprocess.run(["git", "init", "-q"], cwd=source, check=True)
+            subprocess.run(["git", "add", "source.txt"], cwd=source, check=True)
+            subprocess.run(
+                [
+                    "git",
+                    "-c",
+                    "user.name=Fixture",
+                    "-c",
+                    "user.email=fixture@localhost",
+                    "commit",
+                    "-qm",
+                    "fixture",
+                ],
+                cwd=source,
+                check=True,
+            )
+            revision = subprocess.run(
+                ["git", "rev-parse", "HEAD"],
+                cwd=source,
+                check=True,
+                capture_output=True,
+                text=True,
+            ).stdout.strip()
+
+            def fake_codex(plan, prompt):
+                plan.output_file.write_bytes(canonical_json(valid_data()))
+                return subprocess.CompletedProcess([], 0, "", "")
+
+            with (
+                mock.patch("preview_tool.generation._preflight_codex") as preflight,
+                mock.patch("preview_tool.generation._run_codex", side_effect=fake_codex),
+            ):
+                outcome = generate_project(root, "sample", expected_revision=revision)
+                (source / "dirty.txt").write_text("dirty\n", encoding="utf-8")
+                with self.assertRaisesRegex(ValueError, "expected clean Git revision"):
+                    generate_project(root, "sample", expected_revision=revision)
+
+            self.assertTrue(outcome.ok, outcome.message)
+            self.assertEqual(preflight.call_count, 1)
+            record = read_record(root / "previews/.records/sample.json", "sample")
+            self.assertIsNotNone(record)
+            assert record is not None
+            self.assertEqual(record.sourceRevision, revision)
+            self.assertFalse(record.sourceDirty)
 
     def test_atomic_publication_support_is_required_before_codex_preflight(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:

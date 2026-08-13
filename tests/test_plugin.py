@@ -4,6 +4,7 @@ import contextlib
 import io
 import json
 import shutil
+import subprocess
 import tempfile
 import unittest
 from pathlib import Path
@@ -20,6 +21,7 @@ from preview_tool.plugin import (
     build_plugin,
 )
 from preview_tool.publication import ProjectBusyError, ProjectLock
+from preview_tool.records import GenerationRecord, write_record
 from preview_tool.render import compiled_files
 from preview_tool.schema import canonical_json
 from preview_tool.validation import validate_bundle
@@ -61,7 +63,11 @@ class PluginBuildTests(unittest.TestCase):
 
     def output_bytes(self, output: Path | None = None) -> dict[str, bytes]:
         output = output or self.root / "dist" / "in-progress-plugin"
-        return {entry.name: entry.read_bytes() for entry in sorted(output.iterdir())}
+        return {
+            entry.relative_to(output).as_posix(): entry.read_bytes()
+            for entry in sorted(output.rglob("*"))
+            if entry.is_file()
+        }
 
     def test_builds_deterministic_self_contained_project_switching_plugin(self) -> None:
         sources = {"alpha": self.publish("alpha"), "in-progress": self.publish("in-progress")}
@@ -84,7 +90,11 @@ class PluginBuildTests(unittest.TestCase):
         self.assertEqual(json.loads(first["in-progress.plugin.json"]), PLUGIN_MANIFEST)
         self.assertEqual(
             json.loads(first["preview-index.json"]),
-            {"projects": ["alpha", "in-progress"], "schemaVersion": 1},
+            {
+                "generations": [],
+                "projects": ["alpha", "in-progress"],
+                "schemaVersion": 1,
+            },
         )
 
         index = first["index.html"].decode("utf-8")
@@ -246,7 +256,9 @@ class PluginBuildTests(unittest.TestCase):
         self.assertEqual(set(files), PLUGIN_FILES)
         self.assertEqual(
             files["preview-index.json"],
-            canonical_json({"schemaVersion": 1, "projects": ["alpha"]}),
+            canonical_json(
+                {"schemaVersion": 1, "projects": ["alpha"], "generations": []}
+            ),
         )
 
         stdout = io.StringIO()
@@ -267,6 +279,139 @@ class PluginBuildTests(unittest.TestCase):
             stdout.getvalue(),
             f"built {artifacts / 'in-progress-plugin'} with 1 dashboard\n",
         )
+
+    def test_generation_record_is_atomically_packaged_with_the_dashboard(self) -> None:
+        artifacts = self.parent / "host-state"
+        source, _ = self.publish("alpha", artifact_root=artifacts)
+        record_path = artifacts / "previews/.records/alpha.json"
+        write_record(
+            record_path,
+            GenerationRecord(
+                schemaVersion=1,
+                project="alpha",
+                sourceRevision="a" * 40,
+                sourceDirty=False,
+                strategy="update",
+                basedOnSourceRevision="9" * 40,
+                prompt="Prioritize release readiness.",
+            ),
+        )
+        result = build_plugin(
+            self.root,
+            {"alpha": source},
+            artifact_root=artifacts,
+        )
+        packaged = result.output / "preview-index.json"
+        before = packaged.read_bytes()
+        self.assertEqual(json.loads(before)["generations"][0]["sourceRevision"], "a" * 40)
+
+        record_path.write_text("{}\n", encoding="utf-8")
+        with self.assertRaisesRegex(PluginBuildError, "invalid generation record"):
+            build_plugin(
+                self.root,
+                {"alpha": source},
+                artifact_root=artifacts,
+            )
+        self.assertEqual(packaged.read_bytes(), before)
+
+    def test_external_artifacts_receive_local_only_git_snapshots(self) -> None:
+        artifacts = self.parent / "host-state"
+        source, _ = self.publish("alpha", artifact_root=artifacts)
+
+        first = build_plugin(
+            self.root,
+            {"alpha": source},
+            artifact_root=artifacts,
+            git_track=True,
+        )
+        first_revision = subprocess.run(
+            ["git", "rev-parse", "HEAD"],
+            cwd=artifacts,
+            check=True,
+            capture_output=True,
+            text=True,
+        ).stdout.strip()
+        second = build_plugin(
+            self.root,
+            {"alpha": source},
+            artifact_root=artifacts,
+            git_track=True,
+        )
+        second_revision = subprocess.run(
+            ["git", "rev-parse", "HEAD"],
+            cwd=artifacts,
+            check=True,
+            capture_output=True,
+            text=True,
+        ).stdout.strip()
+
+        self.assertEqual(first.output, second.output)
+        self.assertEqual(first_revision, second_revision)
+        self.assertTrue((artifacts / ".git").is_dir())
+        self.assertEqual(
+            subprocess.run(
+                ["git", "remote"],
+                cwd=artifacts,
+                check=True,
+                capture_output=True,
+                text=True,
+            ).stdout,
+            "",
+        )
+        self.assertEqual(
+            subprocess.run(
+                ["git", "status", "--short"],
+                cwd=artifacts,
+                check=True,
+                capture_output=True,
+                text=True,
+            ).stdout,
+            "",
+        )
+        self.assertIn(
+            "/previews/.partial/",
+            (artifacts / ".gitignore").read_text(encoding="utf-8"),
+        )
+        self.assertIn(
+            "/previews/.records/.*",
+            (artifacts / ".gitignore").read_text(encoding="utf-8"),
+        )
+
+        subprocess.run(
+            ["git", "remote", "add", "origin", "https://example.invalid/preview.git"],
+            cwd=artifacts,
+            check=True,
+        )
+        before = self.output_bytes(first.output)
+        with self.assertRaisesRegex(RuntimeError, "must not configure a remote"):
+            build_plugin(
+                self.root,
+                {"alpha": source},
+                artifact_root=artifacts,
+                git_track=True,
+            )
+        self.assertEqual(self.output_bytes(first.output), before)
+
+    def test_artifact_snapshot_rejects_a_non_main_branch_before_publication(self) -> None:
+        artifacts = self.parent / "host-state"
+        source, _ = self.publish("alpha", artifact_root=artifacts)
+        result = build_plugin(
+            self.root,
+            {"alpha": source},
+            artifact_root=artifacts,
+            git_track=True,
+        )
+        before = self.output_bytes(result.output)
+        subprocess.run(["git", "branch", "-m", "other"], cwd=artifacts, check=True)
+
+        with self.assertRaisesRegex(RuntimeError, "branch main"):
+            build_plugin(
+                self.root,
+                {"alpha": source},
+                artifact_root=artifacts,
+                git_track=True,
+            )
+        self.assertEqual(self.output_bytes(result.output), before)
 
     def test_overlapping_artifact_root_is_rejected_before_plugin_state_write(self) -> None:
         source, _ = self.publish("alpha")

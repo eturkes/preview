@@ -17,6 +17,7 @@ from .paths import (
 )
 from .plugin import build_plugin
 from .publication import ProjectLock
+from .records import MAX_USER_PROMPT_CHARS, normalize_user_prompt
 from .server import serve
 from .state import Action, apply_action, format_status, read_state
 from .validation import Report, escape_controls, validate_bundle
@@ -65,6 +66,20 @@ def parser() -> argparse.ArgumentParser:
         type=Path,
         help="use this exact Codex executable (resolved to an absolute path)",
     )
+    generate.add_argument(
+        "--from-scratch",
+        action="store_true",
+        help="regenerate without supplying the prior validated Preview as context",
+    )
+    generate.add_argument(
+        "--prompt-stdin",
+        action="store_true",
+        help="read one bounded Preview-specific prompt from standard input",
+    )
+    generate.add_argument(
+        "--expected-revision",
+        help="require one exact clean Git commit before authoring and publication",
+    )
     compile_command = subcommands.add_parser(
         "compile",
         help="validate and atomically recompile one published model without Codex",
@@ -112,7 +127,24 @@ def parser() -> argparse.ArgumentParser:
         help="include NAME using an explicit trusted source checkout; repeatable",
     )
     _artifact_argument(plugin_build)
+    plugin_build.add_argument(
+        "--git-track",
+        action="store_true",
+        help="commit validated external artifacts to their local-only Git repository",
+    )
     return command
+
+
+def _prompt_from_stdin(enabled: bool) -> str:
+    if not enabled:
+        return ""
+    raw = sys.stdin.buffer.read(MAX_USER_PROMPT_CHARS * 4 + 1)
+    if len(raw) > MAX_USER_PROMPT_CHARS * 4:
+        raise ValueError("Preview prompt exceeds its byte limit")
+    try:
+        return normalize_user_prompt(raw.decode("utf-8"))
+    except UnicodeDecodeError as error:
+        raise ValueError("Preview prompt is not valid UTF-8") from error
 
 
 def _report_text(report: Report) -> str:
@@ -207,6 +239,7 @@ def main(argv: list[str] | None = None, *, root: Path | None = None) -> int:
             print(f"{'enabled' if enabled else 'disabled'} {args.name}")
             return 0
         if args.command == "generate":
+            user_prompt = _prompt_from_stdin(args.prompt_stdin)
             if args.name is not None:
                 if args.dry_run:
                     print(
@@ -216,6 +249,9 @@ def main(argv: list[str] | None = None, *, root: Path | None = None) -> int:
                             args.source,
                             artifact_root=args.artifact_root,
                             codex_executable=args.codex_executable,
+                            from_scratch=args.from_scratch,
+                            user_prompt=user_prompt,
+                            expected_revision=args.expected_revision,
                         ),
                         end="",
                     )
@@ -227,12 +263,17 @@ def main(argv: list[str] | None = None, *, root: Path | None = None) -> int:
                     args.source,
                     artifact_root=args.artifact_root,
                     codex_executable=args.codex_executable,
+                    from_scratch=args.from_scratch,
+                    user_prompt=user_prompt,
+                    expected_revision=args.expected_revision,
                 )
                 stream = sys.stdout if outcome.ok else sys.stderr
                 print(outcome.message, file=stream)
                 return int(not outcome.ok)
             if args.source is not None:
                 raise ValueError("--source requires a named project")
+            if args.expected_revision is not None:
+                raise ValueError("--expected-revision requires a named project")
             enabled = read_state(state_path)
             targets = sorted(enabled)
             if args.dry_run:
@@ -253,6 +294,8 @@ def main(argv: list[str] | None = None, *, root: Path | None = None) -> int:
                                 name,
                                 artifact_root=args.artifact_root,
                                 codex_executable=args.codex_executable,
+                                from_scratch=args.from_scratch,
+                                user_prompt=user_prompt,
                             ),
                             end="",
                         )
@@ -267,6 +310,8 @@ def main(argv: list[str] | None = None, *, root: Path | None = None) -> int:
                 current,
                 artifact_root=args.artifact_root,
                 codex_executable=args.codex_executable,
+                from_scratch=args.from_scratch,
+                user_prompt=user_prompt,
             )
             if missing:
                 prefix = "".join(
@@ -321,6 +366,7 @@ def main(argv: list[str] | None = None, *, root: Path | None = None) -> int:
                 actual_root,
                 _plugin_sources(args.source),
                 artifact_root=args.artifact_root,
+                git_track=args.git_track,
             )
             count = len(result.projects)
             noun = "dashboard" if count == 1 else "dashboards"

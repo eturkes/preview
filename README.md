@@ -91,8 +91,11 @@ ARTIFACT_ROOT="$HOME/.local/share/in-progress/preview"
 preview list
 preview generate --artifact-root "$ARTIFACT_ROOT" --dry-run PROJECT
 preview generate --artifact-root "$ARTIFACT_ROOT" PROJECT
+printf '%s' 'Emphasize release readiness.' | \
+  preview generate --artifact-root "$ARTIFACT_ROOT" --prompt-stdin PROJECT
+preview generate --artifact-root "$ARTIFACT_ROOT" --from-scratch PROJECT
 preview serve --artifact-root "$ARTIFACT_ROOT" PROJECT --open
-preview plugin-build --artifact-root "$ARTIFACT_ROOT"
+preview plugin-build --artifact-root "$ARTIFACT_ROOT" --git-track
 ```
 
 Generation prints the host-read and disclosure warning before spending tokens.
@@ -102,6 +105,15 @@ the tracked compiler canaries. An explicit root stores stages, publishes, and
 locks under `ARTIFACT_ROOT/previews/`, and the aggregate plugin under
 `ARTIFACT_ROOT/in-progress-plugin/`. Tool code and templates remain in this
 checkout. The generated preview home must not overlap the source checkout.
+Named generation evolves an existing structurally valid `preview.json` by default: the
+prior model and its recorded source revision become explicit read-only context, while
+current source remains authoritative. `--from-scratch` omits that context without
+removing the live bundle before validation. `--prompt-stdin` accepts one UTF-8 Preview
+direction capped at 8,000 characters. Each successful publish atomically replaces the
+generation record under `previews/.records/` after the bundle.
+Aggregate packaging embeds each admitted record into the private `preview-index.json`, so
+host status reads dashboard inventory + generation metadata through one atomically published
+file after an interrupted build.
 
 ### Command reference
 
@@ -115,6 +127,8 @@ preview toggle lean-cds
 preview generate --dry-run lean-cds  # exact named plan; no Codex
 preview generate lean-cds            # one current sibling
 preview generate lean-cds --artifact-root /host/state --codex-executable /usr/bin/codex
+printf '%s' 'Prioritize the operator workflow.' | preview generate lean-cds --prompt-stdin
+preview generate lean-cds --from-scratch
 preview generate --dry-run           # plans for the enabled set; no Codex
 preview generate                     # enabled set, sequentially
 
@@ -125,6 +139,7 @@ preview serve lean-cds --port 4173
 preview serve lean-cds --port 0      # kernel-selected loopback port
 preview serve lean-cds --open
 preview plugin-build                 # dist/in-progress-plugin
+preview plugin-build --artifact-root /host/state --git-track
 ```
 
 This repository tracks [`previews/lean-cds/`](previews/lean-cds/) as a generated
@@ -148,11 +163,11 @@ next locked operation removes that residue.
 | `enable NAME` | Enable a current sibling. |
 | `disable NAME` | Disable a current or stale enabled name. |
 | `toggle NAME` | Flip a current sibling, or clear a stale enabled name. |
-| `generate [NAME] [--source PATH] [--artifact-root PATH] [--codex-executable PATH] [--dry-run]` | Generate one project or the enabled set. Explicit source requires `NAME`; artifact state stays under the optional external root. |
+| `generate [NAME] [--source PATH] [--artifact-root PATH] [--codex-executable PATH] [--from-scratch] [--prompt-stdin] [--expected-revision SHA] [--dry-run]` | Generate one project or the enabled set. Default named generation evolves a prior model. Exact revision requires a named clean Git source. |
 | `compile NAME [--model FILE] [--source PATH] [--artifact-root PATH]` | Validate, compile, and atomically publish a declarative model without Codex. |
 | `validate NAME [--source PATH] [--artifact-root PATH]` | Revalidate one published bundle against its current or explicit source. |
 | `serve NAME [--source PATH] [--artifact-root PATH] [--port N] [--open]` | Validate, then serve one bundle on loopback. |
-| `plugin-build [--source NAME PATH]... [--artifact-root PATH]` | Validate current-source publishes and build one static in-progress plugin. |
+| `plugin-build [--source NAME PATH]... [--artifact-root PATH] [--git-track]` | Validate current-source publishes and build one static in-progress plugin. Git tracking requires an external root. |
 
 ### in-progress plugin
 
@@ -168,8 +183,14 @@ failure preserves the prior plugin. The aggregate build locks every current
 project before discovering publishes, so a concurrent generation/compile rename
 gap fails closed instead of silently omitting a dashboard. The output has a
 strict `in-progress.plugin.json` manifest, one self-contained `index.html`, and
-the private `preview-index.json` inventory. It performs no Codex call and
+the private `preview-index.json` inventory + packaged generation metadata. It performs no Codex call and
 requests no host capabilities.
+
+`--git-track` initializes the exact external artifact root as a standalone `main`
+repository, adds only `.gitignore`, `previews/`, and `in-progress-plugin/`, verifies the
+staged diff, and creates a local snapshot commit when bytes changed. Locks, partials,
+and recovery backups are ignored. Preview configures no remote and contains no push
+operation; repeated byte-identical builds create no commit.
 
 Configure that output directory in in-progress and restart its host. The plugin
 accepts the API 1.0 `MessageChannel` handshake, matches the selected in-progress
@@ -198,8 +219,10 @@ remains staged for inspection; an existing published bundle is preserved.
 ### Exact Codex boundary
 
 For each attempt, the harness runs from the sibling source root and sends the
-authoring contract plus runtime assignment on stdin. The effective invocation
-is:
+authoring contract plus runtime assignment on stdin. Incremental mode also names the
+exact prior model as its sole permitted inspection path outside the source; fresh mode
+omits it. A user direction is a trusted bounded section subordinate to schema and
+evidence validation. The effective invocation is:
 
 ```text
 timeout --kill-after=30 1800 /absolute/path/to/codex exec \
@@ -224,7 +247,7 @@ timeout --kill-after=30 1800 /absolute/path/to/codex exec \
 ```
 
 `--sandbox read-only` prevents Codex tools from modifying the source;
-`--ephemeral` avoids retaining a Codex session; the output schema constrains the
+`--ephemeral` avoids retaining a Codex/app-server session; the output schema constrains the
 last message; and the host Codex CLI writes that last message into the harness's
 stage. The prompt also directs read-only inspection and filesystem silence.
 `--ignore-user-config` plus explicit provider/base overrides prevent local
@@ -291,17 +314,21 @@ previews/<project>/                    published, reviewable bundle
 previews/.partial/<project>/           ignored generation/failure stage
 previews/.previous/<project>/          ignored crash-recovery backup
 previews/.locks/<project>.lock         ignored advisory project lock
+previews/.records/<project>.json        bounded source revision/strategy/prompt record
 dist/in-progress-plugin/               ignored derived aggregate plugin
   in-progress.plugin.json
   index.html
-  preview-index.json                    private sorted project inventory
+  preview-index.json                    private sorted inventory + generation records
 ```
 
 With `--artifact-root /host/state`, replace checkout-local `previews/` above
 with `/host/state/previews/`; the aggregate files live directly in
 `/host/state/in-progress-plugin/`. `preview-index.json` is canonical JSON with
-`schemaVersion: 1` and the sorted packaged project slugs. It is host-private and
+`schemaVersion: 1`, sorted packaged project slugs, and sorted admitted generation records. It is host-private and
 is not declared as a plugin asset/capability.
+With `plugin-build --git-track`, `/host/state/.git/` owns local history and
+`/host/state/.gitignore` excludes the three transient Preview subtrees plus aggregate
+stage/backup directories.
 
 First publication promotes one complete staged directory with `rename`. Updates
 use Linux `renameat2(RENAME_EXCHANGE)` so readers always resolve either the old or

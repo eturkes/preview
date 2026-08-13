@@ -74,5 +74,9 @@ class ProjectPaths:
         return self.preview_home / ".locks" / f"{self.project}.lock"
 
     @property
+    def record(self) -> Path:
+        return self.preview_home / ".records" / f"{self.project}.json"
+
+    @property
     def templates(self) -> Path:
         return self.root / "templates"
