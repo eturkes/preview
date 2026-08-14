@@ -23,7 +23,7 @@ The trust boundary is deliberate:
 
 1. Codex or a deliberate direct review supplies an untrusted, strict JSON model:
    project copy, views, components, tour, provenance, and gaps.
-2. Stdlib Python validates and canonicalizes that model, verifies its evidence
+2. Bun/TypeScript validates and canonicalizes that model, verifies its evidence
    references, and compiles it with repository-owned templates.
 3. Only a validator-clean stage replaces the published bundle.
 
@@ -51,15 +51,15 @@ does not call the source project or pretend to be a live backend.
 
 ## Requirements and install
 
-Runtime: Linux, Python 3.11+, GNU `timeout`, and an authenticated
+Runtime: Linux, Bun 1.3.14+, GNU `timeout`, and an authenticated
 [`codex`](https://github.com/openai/codex) CLI logged in through ChatGPT. The
 artifact filesystem must support Linux `renameat2` directory exchange.
-Serving needs no Python package dependencies. Development additionally uses
-`just`, Node.js 20.10+, ShellCheck, Git, and curl; the optional browser probe
-uses ChromiumFish plus GNU `timeout`, and its interaction run enables Node's
-built-in `WebSocket` client.
+Install the exact dependencies with pnpm 11.21.0. Development additionally uses
+Node.js 24+, `just`, ShellCheck, Git, and curl. The optional browser probe uses
+ChromiumFish and Bun's built-in `WebSocket` client.
 
 ```sh
+pnpm install --frozen-lockfile
 just install
 export PATH="$HOME/.local/bin:$PATH" # if it is not already present
 preview --version
@@ -281,9 +281,8 @@ Generation also performs and cleans a real directory-exchange probe on each outp
 filesystem before preflight or inference. Unsupported filesystems therefore fail
 before subscription usage.
 
-The checkout launcher runs Python with `-B`, so Preview operations do not create
-bytecode caches in the tool checkout. On `SIGTERM`, the real CLI entry point
-raises a cancellation outside command dispatch, unwinds locks and generation,
+The checkout launcher resolves Bun globally or from `node_modules/.bin`. On
+`SIGTERM`, the CLI aborts outside command dispatch, unwinds locks and generation,
 terminates the isolated Codex process group, escalates to `SIGKILL` after a
 bounded drain grace, and exits 143. Supervisors should send `SIGTERM`, allow at
 least six seconds for cleanup, then enforce their own `SIGKILL` deadline. This
@@ -390,8 +389,8 @@ committing, sharing, or serving it.
 ## Development
 
 ```sh
-just test           # stdlib compile + Python suite + plugin handshake unit probe
-just ci             # test + Node syntax + ShellCheck + git diff checks; no Codex
+just test           # Bun tests + canonical plugin handshake probe
+just ci             # format, lint, types, tests, syntax, ShellCheck; no Codex
 just browser-probe  # validate + curl a fixture; optional Chromium interaction probe
 PREVIEW_PROBE_CHROMIUM=1 just browser-probe
 ```
@@ -410,8 +409,8 @@ JavaScript execution is unconfirmed; the opt-in Chromium probe exits nonzero
 rather than claiming success.
 
 GitHub CI runs `just ci` plus the tracked browser fixture without Codex
-credentials or generation. Local and CI gates may create ignored Python
-bytecode and browser scratch under `.install/`; handled exits clean the scratch.
-The gates do not format sources.
+credentials or generation. Local and CI browser gates create ignored scratch
+under `.install/`; handled exits clean the scratch. The deterministic gate
+requires already formatted sources.
 
 Licensed under [Apache-2.0 WITH LLVM-exception](LICENSE).

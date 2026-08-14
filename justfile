@@ -1,21 +1,18 @@
-# preview quality gates — Python stdlib + trusted vanilla browser runtime.
+# Preview quality gates — Bun/TypeScript + trusted vanilla browser runtime.
 # SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 
 # List recipes.
 default:
     @just --list
 
-# Compile Python sources and run the stdlib suite.
 test:
-    python3 -m compileall -q src tests
-    PYTHONPATH=src python3 -m unittest discover -s tests -p 'test_*.py'
-    node tools/plugin_runtime_test.mjs
+    pnpm test
+    pnpm runtime:check
 
 # Deterministic, token-free gate. This never invokes Codex.
-ci: test
-    node --check templates/app.js
-    node --check templates/plugin-runtime.js
-    node --check tools/browser_runtime_probe.mjs
+ci:
+    pnpm check
+    pnpm exec oxlint --deny-warnings -A no-unused-vars templates/app.js templates/plugin-runtime.js
     shellcheck bin/preview tools/*.sh
     git diff --check
     git diff --cached --check

@@ -1,16 +1,15 @@
 #!/bin/sh
-# Checkout-bound launcher; remains valid when reached through an install symlink.
+# Checkout-bound Bun launcher; remains valid when reached through an install symlink.
 set -eu
 
 self=$(readlink -f -- "$0")
 root=$(CDPATH='' cd -- "$(dirname -- "$self")/.." && pwd -P)
 
-exec python3 -I -B -c '
-import runpy
-import sys
-
-root = sys.argv.pop(1)
-sys.argv[0] = "preview"
-sys.path.insert(0, root + "/src")
-runpy.run_module("preview_tool", run_name="__main__")
-' "$root" "$@"
+if command -v bun >/dev/null 2>&1; then
+  exec bun "$root/src/main.ts" "$@"
+fi
+if [ -x "$root/node_modules/.bin/bun" ]; then
+  exec "$root/node_modules/.bin/bun" "$root/src/main.ts" "$@"
+fi
+printf '%s\n' 'preview: Bun is unavailable; run pnpm install in the Preview checkout' >&2
+exit 127

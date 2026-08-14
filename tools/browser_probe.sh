@@ -53,112 +53,34 @@ trap 'exit 129' HUP
 trap 'exit 130' INT
 trap 'exit 143' TERM
 
-default_bundle_resolved=$(readlink -f -- "$default_bundle")
-if [ "$bundle" = "$default_bundle_resolved" ] && [ ! -f "$bundle/index.html" ]; then
-  compiled_bundle=$scratch/bundle
-  python3 -I -B - "$root" "$bundle" "$compiled_bundle" <<'PY'
-import sys
-from pathlib import Path
+cd -- "$root"
+slug=$(pnpm exec bun tools/model-slug.ts "$bundle/preview.json")
+artifact_root=$scratch/artifacts
+bin/preview compile "$slug" \
+  --source "$source" \
+  --artifact-root "$artifact_root" \
+  --model "$bundle/preview.json" >/dev/null
+compiled_bundle=$artifact_root/previews/$slug
 
-root, model_dir, target = map(Path, sys.argv[1:])
-sys.path.insert(0, str(root / "src"))
-
-from preview_tool.render import compiled_files  # noqa: E402
-from preview_tool.schema import loads_strict, validate_structure  # noqa: E402
-
-raw = (model_dir / "preview.json").read_bytes()
-data = loads_strict(raw)
-slug = data.get("dashboard", {}).get("project", {}).get("slug") if isinstance(data, dict) else None
-issues = validate_structure(data, slug if isinstance(slug, str) else None)
-if issues:
-    for issue in issues:
-        print(f"[{issue.code}] {issue.path}: {issue.message}", file=sys.stderr)
-    raise SystemExit(1)
-target.mkdir()
-(target / "preview.json").write_bytes(raw)
-for name, content in compiled_files(data, root / "templates").items():
-    (target / name).write_bytes(content)
-PY
-  bundle=$compiled_bundle
-fi
-if [ "$bundle" != "$scratch/bundle" ]; then
-  snapshot_bundle=$scratch/bundle
-  python3 -I -B - "$root" "$bundle" "$source" "$snapshot_bundle" <<'PY'
-import sys
-from pathlib import Path
-
-root, bundle, source, target = map(Path, sys.argv[1:])
-sys.path.insert(0, str(root / "src"))
-
-from preview_tool.render import compiled_files  # noqa: E402
-from preview_tool.schema import MAX_JSON_BYTES, loads_strict  # noqa: E402
-from preview_tool.validation import BUNDLE_FILES, read_bounded_regular, validate_bundle  # noqa: E402
-
-raw = read_bounded_regular(bundle / "preview.json", MAX_JSON_BYTES)
-data = loads_strict(raw)
-slug = data.get("dashboard", {}).get("project", {}).get("slug") if isinstance(data, dict) else None
-report = validate_bundle(
-    bundle,
-    expected_slug=slug if isinstance(slug, str) else bundle.name,
-    source_base=source,
-    artifact_home=root / "previews",
-    template_dir=root / "templates",
-)
-if not report.ok:
-    print(report.format(), file=sys.stderr)
-    raise SystemExit(1)
-expected = compiled_files(data, root / "templates")
-limits = {"preview.json": MAX_JSON_BYTES, **{name: len(content) for name, content in expected.items()}}
-target.mkdir()
-for name in sorted(BUNDLE_FILES):
-    payload = read_bounded_regular(bundle / name, limits[name])
-    if len(payload) > limits[name]:
-        raise ValueError(f"bundle entry grew during snapshot: {name}")
-    (target / name).write_bytes(payload)
-PY
-  bundle=$snapshot_bundle
+if [ -f "$bundle/index.html" ]; then
+  for name in app.js gaps.md index.html preview.json provenance.json styles.css theme.css; do
+    if [ ! -f "$bundle/$name" ]; then
+      echo "browser probe: bundle is incomplete: $bundle/$name" >&2
+      exit 1
+    fi
+    cmp -- "$bundle/$name" "$compiled_bundle/$name"
+  done
 fi
 
-ready=$scratch/port
 log=$scratch/server.log
-python3 -I -B - "$root" "$bundle" "$source" "$ready" >"$log" 2>&1 <<'PY' &
-import sys
-from http.server import ThreadingHTTPServer
-from pathlib import Path
-
-root, bundle, source, ready = map(Path, sys.argv[1:])
-sys.path.insert(0, str(root / "src"))
-
-from preview_tool.schema import loads_strict  # noqa: E402
-from preview_tool.server import handler_for  # noqa: E402
-from preview_tool.validation import validate_bundle  # noqa: E402
-
-data = loads_strict((bundle / "preview.json").read_bytes())
-try:
-    slug = data["dashboard"]["project"]["slug"]
-except (KeyError, TypeError):
-    slug = bundle.name
-if not isinstance(slug, str):
-    slug = bundle.name
-report = validate_bundle(
-    bundle,
-    expected_slug=slug,
-    source_base=source,
-    artifact_home=root / "previews",
-    template_dir=root / "templates",
-)
-if not report.ok:
-    print(report.format(), file=sys.stderr, flush=True)
-    raise SystemExit(1)
-
-server = ThreadingHTTPServer(("127.0.0.1", 0), handler_for(bundle))
-ready.write_text(str(server.server_address[1]) + "\n", encoding="ascii")
-server.serve_forever()
-PY
+bin/preview serve "$slug" \
+  --source "$source" \
+  --artifact-root "$artifact_root" \
+  --port 0 >"$log" 2>&1 &
 server_pid=$!
 
 attempt=0
-while [ ! -s "$ready" ]; do
+while ! LC_ALL=C command grep -Eq 'http://127[.]0[.]0[.]1:[0-9]+/' "$log"; do
   if ! kill -0 "$server_pid" 2>/dev/null; then
     command cat "$log" >&2
     exit 1
@@ -172,11 +94,12 @@ while [ ! -s "$ready" ]; do
   sleep 0.05
 done
 
-port=$(tr -d '\r\n' <"$ready")
-case $port in
-  ''|*[!0-9]*) echo "browser probe: invalid server port: $port" >&2; exit 1 ;;
+url=$(sed -n 's|.*\(http://127[.]0[.]0[.]1:[0-9][0-9]*/\).*|\1|p' "$log" | sed -n '1p')
+case $url in
+  http://127.0.0.1:[0-9]*) ;;
+  *) echo "browser probe: invalid server URL: $url" >&2; exit 1 ;;
 esac
-url=http://127.0.0.1:$port/
+
 headers=$scratch/headers
 headers_lf=$scratch/headers.lf
 dom=$scratch/dom.html
@@ -239,7 +162,7 @@ if [ "${PREVIEW_PROBE_CHROMIUM:-0}" = 1 ]; then
   case $debug_port in
     ''|*[!0-9]*) echo "browser probe: invalid Chromium DevTools port: $debug_port" >&2; exit 1 ;;
   esac
-  if ! timeout --kill-after=5 30 node --experimental-websocket \
+  if ! timeout --kill-after=5 30 pnpm exec bun \
     "$root/tools/browser_runtime_probe.mjs" "$url" "$debug_port"; then
     command tail -n 30 "$scratch/chromium.log" >&2
     exit 1

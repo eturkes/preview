@@ -1,8 +1,7 @@
-/* in-progress plugin API 1.0 handshake + dashboard selection. */
+/* Preview dashboard selection over the canonical in-progress protocol. */
 (function () {
   "use strict";
 
-  const apiVersion = "1.0";
   const dataNode = document.getElementById("preview-plugin-data");
   const runtimeNode = document.getElementById("preview-plugin-dashboard-runtime");
   const stateNode = document.getElementById("preview-plugin-state");
@@ -20,7 +19,6 @@
   });
   let dashboards = {};
   let bootError = "";
-  let connected = false;
 
   try {
     if (!dataNode || !runtimeNode || !stateNode) throw new Error("plugin shell is incomplete");
@@ -132,35 +130,30 @@
     document.head.append(runtime);
   }
 
-  function sendStatus(port, value) {
-    port.postMessage({ kind: "event", name: "status", payload: value });
-  }
-
-  function receive(event) {
-    const message = event.data;
-    if (
-      connected ||
-      event.source !== window.parent ||
-      !message ||
-      message.type !== "in-progress:init"
-    ) {
+  async function connect() {
+    let client;
+    try {
+      const protocol = globalThis.InProgressProtocol;
+      if (!protocol || typeof protocol.connectInProgress !== "function") {
+        throw new Error("canonical in-progress protocol is unavailable");
+      }
+      client = await protocol.connectInProgress({
+        applyTheme: false,
+        requiredCapabilities: [],
+      });
+    } catch (error) {
+      const detail = error instanceof Error ? error.message : "host connection failed";
+      state(
+        "Preview error",
+        "ホストに接続できません / Could not connect to host",
+        detail,
+        "",
+        null,
+      );
       return;
     }
-    const port = event.ports && event.ports[0];
-    if (!port) return;
-    if (
-      !message.context ||
-      message.context.apiVersion !== apiVersion ||
-      typeof message.nonce !== "string"
-    ) {
-      port.close();
-      return;
-    }
-
-    connected = true;
-    window.removeEventListener("message", receive);
-    const project = message.context.project;
-    const theme = message.context.theme;
+    const project = client.context.project;
+    const theme = client.context.theme;
     const projectId = project && typeof project.id === "string" ? project.id : "";
     const dashboard = Object.prototype.hasOwnProperty.call(dashboards, projectId)
       ? dashboards[projectId]
@@ -197,10 +190,8 @@
       status = { state: "error", badge: null, title: "Preview package error" };
     }
 
-    port.postMessage({ kind: "ready", nonce: message.nonce });
-    sendStatus(port, status);
-    window.addEventListener("pagehide", function () { port.close(); }, { once: true });
+    client.setStatus(status);
   }
 
-  window.addEventListener("message", receive);
+  void connect();
 })();

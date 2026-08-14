@@ -1,0 +1,7 @@
+{
+  "$schema": "./node_modules/oxfmt/configuration_schema.json",
+  "ignorePatterns": ["node_modules/**", "vendor/**"],
+  "semi": false,
+  "singleQuote": false,
+  "sortPackageJson": false
+}

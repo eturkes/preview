@@ -1,13 +1,8 @@
 enabled.txt
 enabled.txt.tmp
-__pycache__/
-*.py[cod]
-.coverage
-.ruff_cache/
-.venv/
-.venv-host/
+node_modules/
 .install/
-dist/
+/dist/
 previews/.partial/*
 previews/.previous/*
 previews/.locks/*
