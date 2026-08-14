@@ -1,19 +1,37 @@
 import { z } from "zod";
 import { PluginContextSchema, PluginStatusSchema, parsePluginParams, parsePluginResult, } from "./schemas.js";
 const RpcResponseSchema = z.discriminatedUnion("ok", [
-    z.object({ kind: z.literal("response"), id: z.string(), ok: z.literal(true), result: z.unknown() }).strict(),
-    z.object({ kind: z.literal("response"), id: z.string(), ok: z.literal(false), error: z.string().max(4_096) }).strict(),
+    z
+        .object({
+        kind: z.literal("response"),
+        id: z.string(),
+        ok: z.literal(true),
+        result: z.unknown(),
+    })
+        .strict(),
+    z
+        .object({
+        kind: z.literal("response"),
+        id: z.string(),
+        ok: z.literal(false),
+        error: z.string().max(4_096),
+    })
+        .strict(),
 ]);
 function abortError(signal) {
-    return signal.reason instanceof Error ? signal.reason : new DOMException("Operation aborted", "AbortError");
+    return signal.reason instanceof Error
+        ? signal.reason
+        : new DOMException("Operation aborted", "AbortError");
 }
 function methodTimeout(method) {
-    if (method === "drift.analyze" || method === "slide-gen.generate")
+    if (method === "slide-gen.generate")
+        return 66 * 60_000;
+    if (method === "drift.analyze")
         return 21 * 60_000;
     if (method === "drift.importSession")
         return 75_000;
     if (method === "slide-gen.render")
-        return 5 * 60_000;
+        return 11 * 60_000;
     return 15_000;
 }
 export class InProgressClient {
@@ -137,7 +155,9 @@ export function connectInProgress(options = {}) {
             if (event.source !== target.parent || event.ports.length !== 1)
                 return;
             const data = event.data;
-            if (!data || typeof data !== "object" || data.type !== "in-progress:init")
+            if (!data ||
+                typeof data !== "object" ||
+                data.type !== "in-progress:init")
                 return;
             const port = event.ports[0];
             const record = data;

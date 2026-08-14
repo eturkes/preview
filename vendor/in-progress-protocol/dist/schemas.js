@@ -119,7 +119,11 @@ export const NotificationInputSchema = z
     kind: EventKindSchema.optional(),
     title: z.string().trim().min(1).max(100),
     body: z.string().trim().max(240).optional(),
-    url: z.string().regex(/^\/(?!\/)[^\\\r\n]*$/).max(300).optional(),
+    url: z
+        .string()
+        .regex(/^\/(?!\/)[^\\\r\n]*$/)
+        .max(300)
+        .optional(),
 })
     .strict();
 export const NotificationEventSchema = z
@@ -200,7 +204,11 @@ export const DriftCodexSessionSchema = z
     startedAt: ShortDateSchema,
     updatedAt: ShortDateSchema,
     source: z.string().regex(/^[A-Za-z0-9][A-Za-z0-9._-]{0,99}$/),
-    byteSize: z.number().int().min(1).max(32 * 1024 * 1024),
+    byteSize: z
+        .number()
+        .int()
+        .min(1)
+        .max(32 * 1024 * 1024),
 })
     .strict();
 export const DriftRecentSessionsSchema = z
@@ -335,9 +343,18 @@ export const SlideGenReceiptSchema = z
     kind: z.enum(["generate", "render"]),
     startedAt: ShortDateSchema,
     finishedAt: ShortDateSchema,
-    sourceRevision: z.string().regex(/^(?:[0-9a-f]{40}|[0-9a-f]{64})$/).nullable(),
-    deckSha256: z.string().regex(/^[0-9a-f]{64}$/).nullable(),
-    pdfSha256: z.string().regex(/^[0-9a-f]{64}$/).nullable(),
+    sourceRevision: z
+        .string()
+        .regex(/^(?:[0-9a-f]{40}|[0-9a-f]{64})$/)
+        .nullable(),
+    deckSha256: z
+        .string()
+        .regex(/^[0-9a-f]{64}$/)
+        .nullable(),
+    pdfSha256: z
+        .string()
+        .regex(/^[0-9a-f]{64}$/)
+        .nullable(),
     pageCount: z.number().int().nonnegative(),
 })
     .strict();
@@ -392,15 +409,24 @@ export const PluginStatusSchema = z
     .strict();
 export const PluginMethodSchemas = {
     "project.metadata": { params: z.undefined(), result: ProjectMetadataSchema },
-    "project.tree": { params: ProjectTreeParamsSchema.optional(), result: z.array(ProjectTreeEntrySchema).max(2_000) },
+    "project.tree": {
+        params: ProjectTreeParamsSchema.optional(),
+        result: z.array(ProjectTreeEntrySchema).max(2_000),
+    },
     "project.readText": { params: ProjectReadTextParamsSchema, result: ProjectTextSchema },
     "project.git": { params: z.undefined(), result: GitSummarySchema },
     "host.notify": { params: NotificationInputSchema, result: NotificationEventSchema },
     "align.status": { params: z.undefined(), result: AlignStatusSchema },
     "drift.render": { params: DriftRenderRequestSchema, result: DriftRenderSchema },
-    "drift.validateTraces": { params: DriftValidateTracesRequestSchema, result: DriftValidatedTracesSchema },
+    "drift.validateTraces": {
+        params: DriftValidateTracesRequestSchema,
+        result: DriftValidatedTracesSchema,
+    },
     "drift.recentSessions": { params: z.undefined(), result: DriftRecentSessionsSchema },
-    "drift.importSession": { params: DriftImportSessionRequestSchema, result: DriftImportedSessionSchema },
+    "drift.importSession": {
+        params: DriftImportSessionRequestSchema,
+        result: DriftImportedSessionSchema,
+    },
     "drift.analyze": { params: DriftAnalyzeRequestSchema, result: DriftRenderSchema },
     "tree-complete.workspace": { params: z.undefined(), result: TreeWorkspaceSchema },
     "tree-complete.createFork": { params: TreeForkRequestSchema, result: TreeForkResponseSchema },
