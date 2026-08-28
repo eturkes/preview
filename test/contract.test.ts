@@ -90,6 +90,11 @@ describe("publication and aggregate plugin", () => {
     expect(html).toContain("InProgressProtocol")
     expect(html).toContain("connectInProgress")
     expect(html).not.toContain('href="provenance.json"')
+    expect(html.match(/<!doctype html>/gi)).toHaveLength(1)
+    const executable = html.match(/<script>([\s\S]*)<\/script>\s*<\/body>/)?.[1]
+    expect(executable).toBeDefined()
+    const transpiler = new Bun.Transpiler({ loader: "js" })
+    expect(() => transpiler.transformSync(executable!)).not.toThrow()
 
     const revisionCount = () =>
       spawnSync("git", ["rev-list", "--count", "HEAD"], {

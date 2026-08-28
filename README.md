@@ -145,8 +145,8 @@ preview plugin-build --artifact-root /host/state --git-track
 This repository tracks [`previews/lean-cds/`](previews/lean-cds/) as a generated
 compiler canary and [`previews/in-progress/`](previews/in-progress/) as the
 source-cited dashboard selected by the in-progress plugin for project ID
-`in-progress`. Run `preview compile NAME` after the compiler, trusted templates,
-or other deterministic renderer inputs change. For any model edit, keep the
+`in-progress`. Run `pnpm canaries:sync` after deterministic renderer or template changes.
+Run `preview compile NAME` when its source checkout is available. For any model edit, keep the
 candidate outside the reserved `previews/` tree and run
 `preview compile NAME --model FILE`. The command accepts one bounded regular
 non-symlink JSON file, validates its

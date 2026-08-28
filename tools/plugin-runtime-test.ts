@@ -54,6 +54,9 @@ const hostTheme = {
     text: "#e7ecf4",
     uiFont: "Atkinson Hyperlegible Next",
     warning: "#f2b84b",
+    radiusSmall: "6px",
+    radiusMedium: "10px",
+    radiusLarge: "14px",
   },
 }
 
@@ -101,6 +104,10 @@ async function harness(
   const context = vm.createContext({
     document,
     InProgressProtocol: {
+      applyPluginTheme(theme: typeof hostTheme, target: typeof documentElement) {
+        target.dataset.theme = theme.mode
+        target.style.setProperty("--host-background", theme.tokens.background)
+      },
       async connectInProgress() {
         return client
       },
@@ -125,11 +132,21 @@ const matched = await harness(
 assert.equal(matched.body.innerHTML, '<main id="in-progress">in-progress</main>')
 assert.equal(matched.document.documentElement.className, "theme-graphite font-technical")
 assert.equal(matched.document.documentElement.dataset.previewThemeMode, "dark")
+assert.equal(matched.document.documentElement.dataset.theme, "dark")
+assert.equal(
+  matched.document.documentElement.style.getPropertyValue("--host-background"),
+  "#0b0e14",
+)
 assert.equal(matched.document.documentElement.style.getPropertyValue("--page"), "#0b0e14")
 assert.equal(matched.document.documentElement.style.getPropertyValue("--accent"), "#67d5b5")
 assert.equal(matched.document.documentElement.style.getPropertyValue("--accent-ink"), "#101820")
+assert.equal(matched.document.documentElement.style.getPropertyValue("--radius-lg"), "14px")
 assert.match(
   matched.document.documentElement.style.getPropertyValue("--font-ui"),
+  /^"Atkinson Hyperlegible Next"/,
+)
+assert.match(
+  matched.document.documentElement.style.getPropertyValue("--font-display"),
   /^"Atkinson Hyperlegible Next"/,
 )
 assert.equal(matched.document.title, "in-progress")

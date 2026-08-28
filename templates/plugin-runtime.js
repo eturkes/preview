@@ -9,13 +9,18 @@
   const colorTokenProperties = Object.freeze({
     background: ["--page"],
     surface: ["--surface"],
-    surfaceRaised: ["--surface-raised"],
-    border: ["--line"],
+    surfaceRaised: ["--surface-raised", "--surface-subtle"],
+    border: ["--line", "--line-strong"],
     text: ["--ink"],
     muted: ["--ink-soft", "--ink-muted"],
-    accent: ["--accent", "--accent-strong"],
+    accent: ["--accent", "--accent-strong", "--positive"],
     warning: ["--warning"],
     danger: ["--danger"],
+  });
+  const sizeTokenProperties = Object.freeze({
+    radiusSmall: ["--radius-sm"],
+    radiusMedium: ["--radius-md"],
+    radiusLarge: ["--radius-lg"],
   });
   let dashboards = {};
   let bootError = "";
@@ -64,13 +69,29 @@
       : null;
   }
 
+  function safeSize(value) {
+    return typeof value === "string" && /^\d+(?:\.\d+)?(?:px|rem)$/.test(value)
+      ? value
+      : null;
+  }
+
   function applyHostTheme(theme) {
     if (!theme || (theme.mode !== "dark" && theme.mode !== "light")) return;
+    const protocol = globalThis.InProgressProtocol;
+    if (protocol && typeof protocol.applyPluginTheme === "function") {
+      protocol.applyPluginTheme(theme, root);
+    }
     root.dataset.previewThemeMode = theme.mode;
+    root.style.colorScheme = theme.mode;
     const tokens = theme.tokens;
     if (!tokens || typeof tokens !== "object" || Array.isArray(tokens)) return;
     Object.entries(colorTokenProperties).forEach(function ([name, properties]) {
       const value = safeColor(tokens[name]);
+      if (!value) return;
+      properties.forEach(function (property) { root.style.setProperty(property, value); });
+    });
+    Object.entries(sizeTokenProperties).forEach(function ([name, properties]) {
+      const value = safeSize(tokens[name]);
       if (!value) return;
       properties.forEach(function (property) { root.style.setProperty(property, value); });
     });
@@ -79,10 +100,39 @@
       '"Segoe UI Variable", "Yu Gothic UI", sans-serif'
     );
     const monoFont = safeFont(tokens.monoFont, 'Consolas, "Yu Gothic UI", monospace');
-    if (uiFont) root.style.setProperty("--font-ui", uiFont);
+    if (uiFont) {
+      root.style.setProperty("--font-ui", uiFont);
+      root.style.setProperty("--font-display", uiFont);
+    }
     if (monoFont) root.style.setProperty("--font-mono", monoFont);
     const accent = safeColor(tokens.accent);
-    if (accent) root.style.setProperty("--accent-ink", contrastInk(accent));
+    const background = safeColor(tokens.background);
+    const surface = safeColor(tokens.surface);
+    const warning = safeColor(tokens.warning);
+    const danger = safeColor(tokens.danger);
+    if (accent) {
+      root.style.setProperty("--accent-ink", contrastInk(accent));
+      root.style.setProperty(
+        "--accent-soft",
+        `color-mix(in srgb, ${accent} 12%, ${background || "transparent"})`,
+      );
+      root.style.setProperty(
+        "--positive-soft",
+        `color-mix(in srgb, ${accent} 12%, ${surface || background || "transparent"})`,
+      );
+    }
+    if (warning) {
+      root.style.setProperty(
+        "--warning-soft",
+        `color-mix(in srgb, ${warning} 12%, ${surface || background || "transparent"})`,
+      );
+    }
+    if (danger) {
+      root.style.setProperty(
+        "--danger-soft",
+        `color-mix(in srgb, ${danger} 12%, ${surface || background || "transparent"})`,
+      );
+    }
   }
 
   function state(kind, heading, detail, projectId, theme) {

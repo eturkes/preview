@@ -6,7 +6,9 @@
   "license": "Apache-2.0 WITH LLVM-exception",
   "type": "module",
   "scripts": {
-    "check": "pnpm format:check && pnpm lint && pnpm typecheck && pnpm test && pnpm runtime:check",
+    "canaries:check": "bun tools/sync-canaries.ts --check",
+    "canaries:sync": "bun tools/sync-canaries.ts",
+    "check": "pnpm canaries:check && pnpm format:check && pnpm lint && pnpm typecheck && pnpm test && pnpm runtime:check",
     "format": "oxfmt --write src test tools package.json tsconfig.json",
     "format:check": "oxfmt --check src test tools package.json tsconfig.json",
     "lint": "oxlint --deny-warnings --type-aware --type-check src test tools",

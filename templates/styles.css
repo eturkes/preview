@@ -123,9 +123,13 @@ body {
 }
 
 :lang(ja) {
-  font-family: "Yu Gothic UI", "Hiragino Kaku Gothic ProN", "Hiragino Sans",
-               Meiryo, var(--font-ui);
+  font-family: var(--font-ui), "Yu Gothic UI", "Hiragino Kaku Gothic ProN", "Hiragino Sans",
+    Meiryo, sans-serif;
   line-break: strict;
+}
+
+:root[data-preview-theme-mode] body {
+  background: var(--page);
 }
 
 h1, h2, h3, p, ul, ol, dl, dd, figure, blockquote { margin-top: 0; }
@@ -697,7 +701,7 @@ th { color: var(--ink-soft); font-size: 0.7rem; letter-spacing: 0.04em; text-tra
   flex-direction: column;
   overflow: hidden;
   border: 1px solid var(--line-strong);
-  border-radius: calc(var(--radius-lg) + 0.25rem);
+  border-radius: var(--radius-lg);
   background: var(--surface-raised);
   box-shadow: var(--shadow-md);
   animation: evidence-in 180ms ease both;
@@ -997,7 +1001,7 @@ th { color: var(--ink-soft); font-size: 0.7rem; letter-spacing: 0.04em; text-tra
     height: min(92vh, 52rem);
     margin: 0;
     border-width: 1px 0 0;
-    border-radius: calc(var(--radius-lg) + 0.25rem) calc(var(--radius-lg) + 0.25rem) 0 0;
+    border-radius: var(--radius-lg) var(--radius-lg) 0 0;
     animation-name: evidence-up;
   }
   @keyframes evidence-up { from { opacity: 0; transform: translateY(1rem); } }

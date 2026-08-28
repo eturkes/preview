@@ -180,7 +180,9 @@ function renderEntry(root: string, dashboards: Readonly<Record<string, Dashboard
     PLUGIN_RUNTIME: inlineSafe(pluginRuntime, "</script", "plugin runtime"),
     PREVIEW_RUNTIME: inlineSafe(previewRuntime, "</script", "preview runtime"),
   }
-  for (const name of pluginPlaceholders) shell = shell.replace(`{{${name}}}`, replacements[name])
+  for (const name of pluginPlaceholders) {
+    shell = shell.replace(`{{${name}}}`, () => replacements[name])
+  }
   return Buffer.from(shell, "utf8")
 }
 
