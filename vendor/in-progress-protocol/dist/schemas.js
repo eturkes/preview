@@ -7,6 +7,7 @@ export const PLUGIN_CAPABILITIES = [
     "project.git",
     "host.notify",
     "align.status",
+    "drift.workspace",
     "drift.render",
     "drift.validateTraces",
     "drift.recentSessions",
@@ -170,9 +171,23 @@ export const AlignStatusSchema = z
         .nullable(),
 })
     .strict();
-export const DriftTracePathSchema = RelativePathSchema.refine((value) => !value.includes("\0") &&
+const DriftSafePathSchema = RelativePathSchema.refine((value) => !value.includes("\0") &&
     !value.startsWith("/") &&
-    value.split("/").every((segment) => segment !== "" && segment !== "." && segment !== ".."), "Drift trace path must be a safe project-relative path").refine((value) => /\.jsonl$/i.test(value), "Drift trace must be JSONL");
+    value.split("/").every((segment) => segment !== "" && segment !== "." && segment !== ".."), "Drift path must be safe and relative");
+export const DriftTracePathSchema = DriftSafePathSchema.refine((value) => /\.jsonl$/i.test(value), "Drift trace must be JSONL");
+export const DriftReportPathSchema = DriftSafePathSchema.refine((value) => /\.json$/i.test(value), "Drift report must be JSON");
+export const DriftWorkspaceSchema = z
+    .object({
+    traces: z
+        .array(DriftTracePathSchema)
+        .max(128)
+        .refine((paths) => new Set(paths).size === paths.length, "Drift trace paths must be unique"),
+    reports: z
+        .array(DriftReportPathSchema)
+        .max(128)
+        .refine((paths) => new Set(paths).size === paths.length, "Drift report paths must be unique"),
+})
+    .strict();
 export const DriftAnalyzeRequestSchema = z.object({ path: DriftTracePathSchema }).strict();
 export const DriftValidateTracesRequestSchema = z
     .object({
@@ -186,11 +201,9 @@ export const DriftValidateTracesRequestSchema = z
 export const DriftValidatedTracesSchema = z
     .object({ paths: z.array(DriftTracePathSchema).max(32) })
     .strict();
-export const DriftRenderRequestSchema = z
-    .object({ path: RelativePathSchema.refine((value) => /\.json$/i.test(value)) })
-    .strict();
+export const DriftRenderRequestSchema = z.object({ path: DriftReportPathSchema }).strict();
 export const DriftRenderSchema = z
-    .object({ path: RelativePathSchema, text: z.string().max(1024 * 1024) })
+    .object({ path: DriftReportPathSchema, text: z.string().max(1024 * 1024) })
     .strict();
 export const DriftCodexSessionIdSchema = z
     .string()
@@ -417,6 +430,7 @@ export const PluginMethodSchemas = {
     "project.git": { params: z.undefined(), result: GitSummarySchema },
     "host.notify": { params: NotificationInputSchema, result: NotificationEventSchema },
     "align.status": { params: z.undefined(), result: AlignStatusSchema },
+    "drift.workspace": { params: z.undefined(), result: DriftWorkspaceSchema },
     "drift.render": { params: DriftRenderRequestSchema, result: DriftRenderSchema },
     "drift.validateTraces": {
         params: DriftValidateTracesRequestSchema,

@@ -1,6 +1,6 @@
 import { z } from "zod";
 export declare const PLUGIN_API_VERSION: "1.0";
-export declare const PLUGIN_CAPABILITIES: readonly ["project.metadata", "project.tree", "project.readText", "project.git", "host.notify", "align.status", "drift.render", "drift.validateTraces", "drift.recentSessions", "drift.importSession", "drift.analyze", "tree-complete.workspace", "tree-complete.createFork", "slide-gen.status", "slide-gen.generate", "slide-gen.render"];
+export declare const PLUGIN_CAPABILITIES: readonly ["project.metadata", "project.tree", "project.readText", "project.git", "host.notify", "align.status", "drift.workspace", "drift.render", "drift.validateTraces", "drift.recentSessions", "drift.importSession", "drift.analyze", "tree-complete.workspace", "tree-complete.createFork", "slide-gen.status", "slide-gen.generate", "slide-gen.render"];
 export declare const PluginCapabilitySchema: z.ZodEnum<{
     "align.status": "align.status";
     "drift.analyze": "drift.analyze";
@@ -8,6 +8,7 @@ export declare const PluginCapabilitySchema: z.ZodEnum<{
     "drift.recentSessions": "drift.recentSessions";
     "drift.render": "drift.render";
     "drift.validateTraces": "drift.validateTraces";
+    "drift.workspace": "drift.workspace";
     "host.notify": "host.notify";
     "project.git": "project.git";
     "project.metadata": "project.metadata";
@@ -43,6 +44,7 @@ export declare const PluginManifestSchema: z.ZodObject<{
         "drift.recentSessions": "drift.recentSessions";
         "drift.render": "drift.render";
         "drift.validateTraces": "drift.validateTraces";
+        "drift.workspace": "drift.workspace";
         "host.notify": "host.notify";
         "project.git": "project.git";
         "project.metadata": "project.metadata";
@@ -181,6 +183,12 @@ export declare const AlignStatusSchema: z.ZodObject<{
 }, z.core.$strict>;
 export type AlignStatus = z.infer<typeof AlignStatusSchema>;
 export declare const DriftTracePathSchema: z.ZodString;
+export declare const DriftReportPathSchema: z.ZodString;
+export declare const DriftWorkspaceSchema: z.ZodObject<{
+    traces: z.ZodArray<z.ZodString>;
+    reports: z.ZodArray<z.ZodString>;
+}, z.core.$strict>;
+export type DriftWorkspace = z.infer<typeof DriftWorkspaceSchema>;
 export declare const DriftAnalyzeRequestSchema: z.ZodObject<{
     path: z.ZodString;
 }, z.core.$strict>;
@@ -570,6 +578,7 @@ export declare const PluginContextSchema: z.ZodObject<{
         "drift.recentSessions": "drift.recentSessions";
         "drift.render": "drift.render";
         "drift.validateTraces": "drift.validateTraces";
+        "drift.workspace": "drift.workspace";
         "host.notify": "host.notify";
         "project.git": "project.git";
         "project.metadata": "project.metadata";
@@ -723,6 +732,13 @@ export declare const PluginMethodSchemas: {
                 command: z.ZodString;
                 reason: z.ZodString;
             }, z.core.$strict>>;
+        }, z.core.$strict>;
+    };
+    readonly "drift.workspace": {
+        readonly params: z.ZodUndefined;
+        readonly result: z.ZodObject<{
+            traces: z.ZodArray<z.ZodString>;
+            reports: z.ZodArray<z.ZodString>;
         }, z.core.$strict>;
     };
     readonly "drift.render": {
@@ -1149,6 +1165,7 @@ export declare const PluginRpcRequestSchema: z.ZodObject<{
         "drift.recentSessions": "drift.recentSessions";
         "drift.render": "drift.render";
         "drift.validateTraces": "drift.validateTraces";
+        "drift.workspace": "drift.workspace";
         "host.notify": "host.notify";
         "project.git": "project.git";
         "project.metadata": "project.metadata";
